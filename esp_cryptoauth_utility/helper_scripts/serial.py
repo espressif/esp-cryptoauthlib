@@ -17,6 +17,7 @@ from sys import exit
 import time
 import subprocess
 import collections
+import sys
 try:
     import esptool
 except ImportError:  # cheat and use IDF's copy of esptool if available
@@ -46,7 +47,7 @@ class cmd_interpreter:
                 print("- CLI Initialised")
                 return True
             elif (time.time() - start_time) > p_timeout:
-                printf("connection timed out")
+                print("connection timed out")
                 return False
 
     def exec_cmd(self, port, command, args=None):

@@ -1,16 +1,21 @@
 # ESP_CRYPTOAUTH_UTILITY
 # Description
- The python utility helps to configure and provision `ATECC608A` chip on `ESP32-WROOM-32SE` module
+ The python utility helps to configure and provision `ATECC608A` chip on `ESP32-WROOM-32SE` module.
     There are currently three types of ATECC608A which are [Trust & Go](https://www.microchip.com/wwwproducts/en/ATECC608A-TNGTLS), [TrustFlex](https://www.microchip.com/wwwproducts/en/ATECC608A-TFLXTLS) and [TrustCustom](https://www.microchip.com/wwwproducts/en/ATECC608A). `Trust & Go` and `TrustFlex` chips are preconfigured by the manufacturer (Microchip) so we only need to generate manifest file for those chips. `TrustCustom` type of chips are not configured, so for `TrustCustom` type of chips need to be first configured and then provisioned with a newly  generated device certificate and key pair. The script automatically detects which type of ATECC608A chip is integrated with `ESP32-WROOM-32SE` so it will proceed to next required steps on its own.
 
 # Hardware Required
-It requires [ESP32-WROOM-32SE](https://www.espressif.com/sites/default/files/documentation/esp32-wroom-32se_datasheet_en.pdf) which has Microchip's [ATECC608A](https://www.microchip.com/wwwproducts/en/ATECC608A) (Hardware Security Module) integrated on the module.
+It requires [ESP32-WROOM-32SE](https://www.espressif.com/sites/default/files/documentation/esp32-wroom-32se_datasheet_en.pdf) which has Microchip's [ATECC608A](https://www.microchip.com/wwwproducts/en/ATECC608A) (Secure Element) integrated on the module.
 
 > Note: It is recommended to change directory to `esp_cryptoauth_utility` to execute all following commands if not already done.
 
+## Install python dependancies
+To use the utility some python depencancies must be installed with following command(current directory should be `esp_cryptoauth_utility` for executing the command).
+
+    pip install -r requirements.txt
+
 ## Step 1:- Generate Signer Certificate
 Signer cert and key pair:
-* In case of `TrustCustom` chips ,these certificate and key pair are used to sign the device cert which is going to be created with provite key from the HSM.
+* In case of `TrustCustom` chips ,these certificate and key pair are used to sign the device cert which is going to be generted.
 
 * In case of `Trust & Go` and `TrustFlex` devices the device certs are already signed by microchip signer cert, and the signer cert and key pair generated in this step are used to sign the manifest file.
 
@@ -28,11 +33,11 @@ Create a signer key and signer cert by executing following commands sequentially
 
 *   The tool will automatically detect the type of ATECC608A chip connected to ESP module and perform its intended task which are as follows.
 
-    * For `TrustCustom` type of ATECC608A chip first configure ATECC608A chip with its default configuration options.The tool will create a device cert by generating a private key on slot 0 of the module, passing the CSR to host, sign the CSR with signer cert generated in step above. To set validity of device cert please refer [device_cert_validity](README.md#set-validity-of-device-cert-for-trustcustom). save the device cert on the ATECC chip as well as on the host machine as `device_cert.pem`,it also saves the cert definitions in output_files folder for future use.
+    * For `TrustCustom` type of ATECC608A chip first configure ATECC608A chip with its default configuration options.The tool will create a device cert by generating a private key on slot 0 of the module, passing the CSR to host, sign the CSR with signer cert generated in step above. To set validity of device cert please refer [device_cert_validity](README.md#set-validity-of-device-cert-for-trustcustom). save the device cert on the ATECC chip as well as on the host machine as `device_cert.pem`,it also saves the cert definitions in `output_files` folder for future use.
 
     * For `Trust & Go` and `TrustFlex` type of ATECC608A devices this script will generate the manifest file with the name of chip serial number.The manifest file will be signed with the signer cert generated above. The generated manifest file should be registered with the cloud to register the device certificate.
 
-The command is as follows
+The command is as follows,
 
 ```
 python secure_cert_mfg.py --signer-cert signercert.pem --signer-cert-private-key signerkey.pem --port /UART/COM/PORT
@@ -43,6 +48,7 @@ If you do not provide `signer-cert` and `signer_key` in above command, `sample_s
 
 ---
 ### Find type of ATECC608A chip connected to ESP32-WROOM32-SE.
+The command is as follows,
     python secure_cert_mfg.py --port /serial/port --type
 It will print the type of ATECC608A chip connected to ESP32-WROOM-32SE on console.
 

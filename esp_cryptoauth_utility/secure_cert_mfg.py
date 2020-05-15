@@ -15,10 +15,6 @@ import argparse
 from pyasn1_modules import pem
 from sys import exit
 import helper_scripts as hs
-#from helper_scripts import secure_cert_sign
-#from helper_scripts.esp_serial_helper import load_app_stub, cmd_interpreter, hs.serial.esp_cmd_check_ok
-#from helper_scripts.cert2certdef import esp_create_cert_def_str
-#from helper_scripts.generate_manifest import generate_manifest_file
 import binascii
 import os
 import sys
@@ -154,6 +150,7 @@ def provision_trustcustom_device(esp, args, init_mfg):
         exit(0)
 
     # get the cert definition and template data in string format
+    print("program device cert")
     cert_def_str = hs.cert2certdef.esp_create_cert_def_str(cert_der, "DEVICE_CERT")
 
     retval = init_mfg.exec_cmd(esp._port, "provide-cert-def 0", cert_def_str)
@@ -168,6 +165,7 @@ def provision_trustcustom_device(esp, args, init_mfg):
     print("Signer cert is:")
     print(signer_cert_data)
 
+    print("program signer cert")
     cert_def_str = hs.cert2certdef.esp_create_cert_def_str(cert_der, "SIGNER_CERT")
 
     retval = init_mfg.exec_cmd(esp._port, "provide-cert-def 1", cert_def_str)
