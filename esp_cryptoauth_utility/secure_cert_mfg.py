@@ -175,15 +175,15 @@ def provision_trustcustom_device(esp, args, init_mfg):
     hs.serial.esp_cmd_check_ok(retval, "program-signer-cert")
 
 def esp_handle_file(file_name, operation, data=None):
-    if operation is "read":
+    if operation == "read":
         with open(file_name, "r") as cert_file:
             data = cert_file.read()
         return data
-    elif operation is "pem_read":
+    elif operation == "pem_read":
         with open(file_name, "r") as cert_file:
             data = pem.readPemFromFile(cert_file)
         return data
-    elif operation is "write":
+    elif operation == "write":
         with open(file_name, "w+") as cert_file:
             cert_file.write(data)
         return True

@@ -66,6 +66,7 @@ class cmd_interpreter:
         while True:
             port.timeout = 1.5
             line = (port.readline()).decode()
+            print(line)
             if 'Status: Success' in line:
                 status = True
             elif 'Status: Failure' in line:
