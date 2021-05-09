@@ -20,8 +20,9 @@
 #include "esp_log.h"
 #include "cryptoauthlib.h"
 
-#define I2C0_SDA_PIN                       16
-#define I2C0_SCL_PIN                       17
+#define I2C0_SDA_PIN                       CONFIG_ATCA_I2C_SDA_PIN
+#define I2C0_SCL_PIN                       CONFIG_ATCA_I2C_SCL_PIN
+
 #define I2C1_SDA_PIN                       21
 #define I2C1_SCL_PIN                       22
 #define ACK_CHECK_EN                       0x1              /*!< I2C master will check ack from slave*/

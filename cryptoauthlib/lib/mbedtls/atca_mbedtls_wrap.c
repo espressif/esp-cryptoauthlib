@@ -55,7 +55,6 @@
 /* Cryptoauthlib Includes */
 #include "cryptoauthlib.h"
 #include "atca_mbedtls_wrap.h"
-#include "atca_mbedtls_patch.h"
 
 #include "crypto/atca_crypto_sw.h"
 #if ATCA_CA_SUPPORT
