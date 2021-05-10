@@ -34,6 +34,14 @@
 #define CRYPT_BUF_LEN 1200
 #define CRYPT_BUF_PUB_KEY_LEN ATCA_PUB_KEY_SIZE
 
+#ifdef CONFIG_ECU_DEBUGGING
+#define ECU_DEBUG_LOG ESP_LOGI
+#else
+#define ECU_DEBUG_LOG(...)
+#endif /* MFG_DEBUG */
+
+static const char *TAG = "secure_element";
+
 static unsigned char crypt_buf_public_key[CRYPT_BUF_PUB_KEY_LEN];
 static unsigned char crypt_buf_csr[CRYPT_BUF_LEN];
 static unsigned char crypt_buf_cert[CRYPT_BUF_LEN];
@@ -71,16 +79,23 @@ static esp_err_t init_device(int argc, char **argv)
     int err_code;
     status_object = BEGIN;
     char device_type[20] = {};
-    ret = init_atecc608a(device_type, &err_code);
-    printf("Status: %s\n", ret ? "Failure" : "Success");
+
+    if(argc == 3) {
+        uint8_t i2c_sda_pin = atoi(argv[1]);
+        uint8_t i2c_scl_pin = atoi(argv[2]);
+        ESP_LOGI(TAG, "I2C pins selected are SDA = %d, SCL = %d", i2c_sda_pin, i2c_scl_pin);
+        ret = init_atecc608a(device_type, i2c_sda_pin, i2c_scl_pin, &err_code);
+    }
+
+    ESP_LOGI(TAG, "Status: %s\n", ret ? "Failure" : "Success");
     status_object = ret ? ATECC_INIT_FAIL : ATECC_INIT_SUCCESS;
 
     if (ret == ESP_ERR_INVALID_ARG) {
-        printf("Reason: Invalid Usage\n");
+        ESP_LOGE(TAG, "Reason: Invalid Usage");
     } else if (ret != ESP_OK) {
-        printf("Initilization of ATECC failed,returned %02x\nplease check that you are using ESPWROOM32SE and not WROOM32", err_code);
+        ESP_LOGE(TAG, "Initilization of ATECC failed, returned %02x\nPlease check that the appropriate I2C pin numbers are provided to the python script", err_code);
     } else {
-        printf("ATECC608A Device Type: %s\n", device_type);
+        ECU_DEBUG_LOG(TAG, "ATECC608 Device Type: %s\n", device_type);
     }
     fflush(stdout);
     return ESP_OK;
@@ -106,12 +121,12 @@ static esp_err_t print_chip_info(int argc, char **argv)
     uint8_t sn[9] = {};
     if (status_object >= ATECC_INIT_SUCCESS) {
         ret = atecc_print_info(sn, &err_code);
-        printf("Status: %s\n", ret ? "Failure" : "Success");
+        ESP_LOGI(TAG, "Status: %s\n", ret ? "Failure" : "Success");
     }
     if (status_object < ATECC_INIT_SUCCESS) {
-        printf("Please Initialize device before calling this function\n");
+        ESP_LOGE(TAG, "Please Initialize device before calling this function");
     } else if (ret != ESP_OK) {
-        printf("Error in generating keys, returned %02x \n", err_code);
+        ESP_LOGE(TAG, "Error in generating keys, returned %02x", err_code);
     } else {
         printf("\n Serial Number:\n");
         for (int count = 0; count < 9; count ++) {
@@ -143,16 +158,16 @@ static esp_err_t generate_key_pair(int argc, char **argv)
         if (argc == 2 && (atoi(argv[1]) < 3)) {
             ret = atecc_keygen(atoi(argv[1]), crypt_buf_public_key, CRYPT_BUF_PUB_KEY_LEN, &err_code);
         }
-        printf("Status: %s\n", ret ? "Failure" : "Success");
+        ESP_LOGI(TAG, "Status: %s\n", ret ? "Failure" : "Success");
         status_object = ret ? KEY_PAIR_GEN_FAIL : KEY_PAIR_GEN_SUCCESS;
     }
 
     if (status_object < ATECC_INIT_SUCCESS) {
-        printf("Please Initialize device before calling this function\n");
+        ESP_LOGE(TAG, "Please Initialize device before calling this function");
     } else if (ret == ESP_ERR_INVALID_ARG) {
-        printf("Reason: Invalid Usage\n");
+        ESP_LOGE(TAG, "Reason: Invalid Usage");
     } else if (ret != ESP_OK) {
-        printf("Error in generating keys, returned %02x \n", err_code);
+        ESP_LOGE(TAG, "Error in generating keys, returned %02x", err_code);
     } else {
         printf("\nPublic Key:\n");
         for (int count = 0; count < CRYPT_BUF_PUB_KEY_LEN; count ++) {
@@ -167,7 +182,7 @@ static esp_err_t register_generate_key_pair()
 {
     const esp_console_cmd_t cmd = {
         .command = "generate-keys",
-        .help = "Generates an internal ECC private key inside the given slot of ATECC608A"
+        .help = "Generates an internal ECC private key inside the given slot of ATECC608"
         "  returns its public key \n  By default only slots 0,1,2 are supported"
         "  Usage: generate-keys <slot number>\n"
         "  Example:\ngenerate-keys 0",
@@ -185,16 +200,16 @@ static esp_err_t generate_csr(int argc, char **argv)
         if (argc == 1) {
             ret = atecc_csr_gen(crypt_buf_csr, CRYPT_BUF_LEN, &err_code);
         }
-        printf("Status: %s\n", ret ? "Failure" : "Success");
+        ESP_LOGI(TAG, "Status: %s\n", ret ? "Failure" : "Success");
         status_object = ret ? CSR_GEN_FAIL : CSR_GEN_SUCCESS;
     }
 
     if (status_object < ATECC_INIT_SUCCESS) {
-        printf("Please Initialize device before calling this function\n");
+        ESP_LOGE(TAG, "Please Initialize device before calling this function");
     } else if (ret == ESP_ERR_INVALID_ARG) {
-        printf("Reason: Invalid Usage\n");
+        ESP_LOGE(TAG, "Reason: Invalid Usage");
     } else if (ret != ESP_OK) {
-        printf("Generating CSR failed , returned %02x, \nNote: please check that you have called \n generate_keys command on slot mentioned in cert_def_3_device_csr.c in component/cryptoauthlib/port/ \nat least once before you debug error code", err_code);
+        ESP_LOGE(TAG, "Generating CSR failed, returned %02x, \nNote: please check that you have called \n generate_keys command on slot mentioned in cert_def_3_device_csr.c in component/cryptoauthlib/port/ \nat least once before you debug error code", err_code);
     } else {
         printf("\n%s", crypt_buf_csr);
     }
@@ -227,16 +242,16 @@ static esp_err_t generate_pub_key(int argc, char **argv)
         if (argc == 2) {
             ret = atecc_gen_pubkey(atoi(argv[1]), crypt_buf_public_key, CRYPT_BUF_PUB_KEY_LEN, &err_code);
         }
-        printf("Status: %s\n", ret ? "Failure" : "Success");
+        ESP_LOGI(TAG, "Status: %s\n", ret ? "Failure" : "Success");
         status_object = ret ? PUBKEY_GEN_FAIL : PUBKEY_GEN_SUCCESS;
     }
 
     if (status_object < ATECC_INIT_SUCCESS) {
-        printf("Please Initialize device before calling this function\n");
+        ESP_LOGE(TAG, "Please Initialize device before calling this function");
     } else if (ret == ESP_ERR_INVALID_ARG) {
-        printf("Reason: Invalid Usage\n");
+        ESP_LOGE(TAG, "Reason: Invalid Usage");
     } else if (ret != ESP_OK) {
-        printf("Generating Public key failed , returned %02x, \nNote: please check that you have called\ngenerate_keys command on slot %d at least once before you debug error code", err_code, atoi(argv[1]));
+        ESP_LOGE(TAG, "Generating Public key failed, returned %02x, \nNote: please check that you have called\ngenerate_keys command on slot %d at least once before you debug error code", err_code, atoi(argv[1]));
     } else {
         printf("\nPublic Key:\n");
         for (int count = 0; count < CRYPT_BUF_PUB_KEY_LEN; count ++) {
@@ -272,16 +287,16 @@ static esp_err_t provide_cert_def(int argc, char **argv)
                 ret = get_cert_def(crypt_buf_cert, CRYPT_BUF_LEN, CERT_TYPE_SIGNER);
             }
         }
-        printf("Status: %s\n", ret ? "Failure" : "Success");
+        ESP_LOGI(TAG, "Status: %s\n", ret ? "Failure" : "Success");
         status_object = ret ?  GET_CERT_DEF_SUCCESS : GET_CERT_DEF_FAIL;
     }
 
     if (status_object < ATECC_INIT_SUCCESS) {
-        printf("Please Initialize device before calling this function\n");
+        ESP_LOGE(TAG, "Please Initialize device before calling this function");
     } else if (ret == ESP_ERR_INVALID_ARG) {
-        printf("Reason: Invalid Usage\n");
+        ESP_LOGE(TAG, "Reason: Invalid Usage");
     } else if (ret != ESP_OK) {
-        printf("\nFailure\n");
+        ESP_LOGE(TAG, "Failure");
     }
     fflush(stdout);
     return ESP_OK;
@@ -308,15 +323,15 @@ static esp_err_t program_device_cert(int argc, char **argv)
             ret = atecc_input_cert(crypt_buf_cert, CRYPT_BUF_LEN, CERT_TYPE_DEVICE, &err_code);
         }
 
-        printf("Status: %s\n", ret ? "Failure" : "Success");
+        ESP_LOGI(TAG, "Status: %s\n", ret ? "Failure" : "Success");
         status_object = ret ? PROGRAM_CERT_FAIL : PROGRAM_CERT_SUCCESS;
     }
     if (status_object < CSR_GEN_SUCCESS) {
-        printf("Generate the CSR before calling this function.\n");
+        ESP_LOGE(TAG, "Generate the CSR before calling this function.");
     } else if (ret == ESP_ERR_INVALID_ARG) {
-        printf("Reason: Invalid Usage\n");
+        ESP_LOGE(TAG, "Reason: Invalid Usage");
     } else if (ret != ESP_OK) {
-        printf("Programming device cert failed, returned %d\n", err_code);
+        ESP_LOGE(TAG, "Programming device cert failed, returned %d", err_code);
     }
 
     fflush(stdout);
@@ -343,15 +358,15 @@ static esp_err_t program_signer_cert(int argc, char **argv)
             ret = atecc_input_cert(crypt_buf_cert, CRYPT_BUF_LEN, CERT_TYPE_SIGNER, &err_code);
         }
 
-        printf("Status: %s\n", ret ? "Failure" : "Success");
+        ESP_LOGI(TAG, "Status: %s\n", ret ? "Failure" : "Success");
         status_object = ret ? PROGRAM_CERT_FAIL : PROGRAM_CERT_SUCCESS;
     }
     if (status_object < CSR_GEN_SUCCESS) {
-        printf("Generate the CSR before calling this function.\n");
+        ESP_LOGE(TAG, "Generate the CSR before calling this function.");
     } else if (ret == ESP_ERR_INVALID_ARG) {
-        printf("Reason: Invalid Usage\n");
+        ESP_LOGE(TAG, "Reason: Invalid Usage");
     } else if (ret != ESP_OK) {
-        printf("Programming signer cert failed, returned %d\n", err_code);
+        ESP_LOGE(TAG, "Programming signer cert failed, returned %d", err_code);
     }
 
 
@@ -379,15 +394,15 @@ static esp_err_t get_tngtls_root_cert(int argc, char **argv)
         if (argc == 1) {
             ret = atecc_get_tngtls_root_cert(crypt_buf_cert, &cert_size, &err_code);
         }
-        printf("Status: %s\n", ret ? "Failure" : "Success");
+        ESP_LOGI(TAG, "Status: %s\n", ret ? "Failure" : "Success");
         status_object = ret ? TNGTLS_ROOT_CERT_FAIL : TNGTLS_ROOT_CERT_SUCCESS;
     }
     if (status_object < ATECC_INIT_SUCCESS) {
-        printf("Please Initialize device before calling this function\n");
+        ESP_LOGE(TAG, "Please Initialize device before calling this function");
     } else if (ret == ESP_ERR_INVALID_ARG) {
-        printf("Reason: Invalid Usage\n");
+        ESP_LOGE(TAG, "Reason: Invalid Usage");
     } else if (ret != ESP_OK) {
-        printf("Failed to obtain tngtls_root cert , returned %02x", err_code);
+        ESP_LOGE(TAG, "Failed to obtain tngtls_root cert, returned %02x", err_code);
     } else {
         printf("\n Root Cert Len:%d\n", cert_size);
         printf("\nCertificate:\n");
@@ -404,7 +419,7 @@ static esp_err_t register_get_tngtls_root_cert()
     const esp_console_cmd_t cmd = {
         .command = "get-tngtls-root-cert",
         .help = "get tngtls root cert, which already stored on the device"
-        "  The ATECC608A device type should be TNG ( Trust & G0 )"
+        "  The ATECC608 device type should be TNG ( Trust & G0 )"
         "  Usage:get-tngtls-root-cert "
         "  Example:\n"
         "  get-tngtls-root-cert",
@@ -422,15 +437,15 @@ static esp_err_t get_tngtls_signer_cert(int argc, char **argv)
         if (argc == 1) {
             ret = atecc_get_tngtls_signer_cert(crypt_buf_cert, &cert_size, &err_code);
         }
-        printf("Status: %s\n", ret ? "Failure" : "Success");
+        ESP_LOGI(TAG, "Status: %s\n", ret ? "Failure" : "Success");
         status_object = ret ? TNGTLS_SIGNER_CERT_FAIL : TNGTLS_SIGNER_CERT_SUCCESS;
     }
     if (status_object < ATECC_INIT_SUCCESS) {
-        printf("Please Initialize device before calling this function\n");
+        ESP_LOGE(TAG, "Please Initialize device before calling this function");
     } else if (ret == ESP_ERR_INVALID_ARG) {
-        printf("Reason: Invalid Usage\n");
+        ESP_LOGE(TAG, "Reason: Invalid Usage");
     } else if (ret != ESP_OK) {
-        printf("Failed to obtain tngtls_signer cert , returned %02x", err_code);
+        ESP_LOGE(TAG, "Failed to obtain tngtls_signer cert, returned %02x", err_code);
     } else {
         printf("\n Signer Cert Len:%d\n", cert_size);
         printf("\nCertificate:\n");
@@ -447,7 +462,7 @@ static esp_err_t register_get_tngtls_signer_cert()
     const esp_console_cmd_t cmd = {
         .command = "get-tngtls-signer-cert",
         .help = "get tngtls signer cert, which already stored on the device"
-        "  The ATECC608A device type should be TNG ( Trust & GO )"
+        "  The ATECC608 device type should be TNG ( Trust & GO )"
         "  Usage:get-tngtls-signer-cert "
         "  Example:\n"
         "  get-tngtls-signer-cert",
@@ -465,17 +480,17 @@ static esp_err_t get_tngtls_device_cert(int argc, char **argv)
         if (argc == 1) {
             ret = atecc_get_tngtls_device_cert(crypt_buf_cert, &cert_size, &err_code);
         }
-        printf("Status: %s\n", ret ? "Failure" : "Success");
+        ESP_LOGI(TAG, "Status: %s\n", ret ? "Failure" : "Success");
         status_object = ret ? TNGTLS_DEVICE_CERT_FAIL : TNGTLS_DEVICE_CERT_SUCCESS;
     }
     if (status_object < ATECC_INIT_SUCCESS) {
-        printf("Please Initialize device before calling this function\n");
+        ESP_LOGE(TAG, "Please Initialize device before calling this function");
     } else if (status_object < TNGTLS_SIGNER_CERT_SUCCESS) {
-        printf("Please execute get-tngtls-signer-cert command as ths command requires signer cert");
+        ESP_LOGE(TAG, "Please execute get-tngtls-signer-cert command as this command requires signer cert");
     } else if (ret == ESP_ERR_INVALID_ARG) {
-        printf("Reason: Invalid Usage\n");
+        ESP_LOGE(TAG, "Reason: Invalid Usage");
     } else if (ret != ESP_OK) {
-        printf("Failed to obtain tngtls_siger cert , returned %02x", err_code);
+        ESP_LOGE(TAG, "Failed to obtain tngtls_siger cert, returned %02x", err_code);
     } else {
         printf("\n Device Cert Len:%d\n", cert_size);
         printf("\nCertificate:\n");
@@ -492,7 +507,7 @@ static esp_err_t register_get_tngtls_device_cert()
     const esp_console_cmd_t cmd = {
         .command = "get-tngtls-device-cert",
         .help = "get tngtls device cert, which already stored on the device"
-        "  The ATECC608A device type should be TNG ( Trust & GO )"
+        "  The ATECC608 device type should be TNG ( Trust & GO )"
         "  Usage:get-tngtls-device-cert "
         "  Example:\n"
         "  get-tngtls-device-cert",

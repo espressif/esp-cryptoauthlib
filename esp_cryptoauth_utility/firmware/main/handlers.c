@@ -127,12 +127,12 @@ esp_err_t init_atecc608a(char *device_type, int *err_ret)
 
     if (ATCA_SUCCESS != (ret = atcab_init(&cfg_ateccx08a_i2c_default))) {
         sprintf(device_type, "%s", "Trust&Go");
-        /* Checking if the ATECC608A is of type Trust & GO */
+        /* Checking if the ATECC608 is of type Trust & GO */
         cfg_ateccx08a_i2c_default.atcai2c.slave_address = 0x6A;
 
         if (ATCA_SUCCESS != (ret = atcab_init(&cfg_ateccx08a_i2c_default))) {
             sprintf(device_type, "%s", "TrustFlex");
-            /* Checking if the ATECC608A is of type TrustFlex */
+            /* Checking if the ATECC608 is of type TrustFlex */
             cfg_ateccx08a_i2c_default.atcai2c.slave_address = 0x6C;
 
             if (ATCA_SUCCESS != (ret = atcab_init(&cfg_ateccx08a_i2c_default))) {
@@ -196,6 +196,12 @@ esp_err_t atecc_print_info(uint8_t *serial_no, int *err_ret)
         goto exit;
     }
     ESP_LOG_BUFFER_HEX("ATECC CHIP REVISION", rev_info, 4);
+    if (rev_info[3] == 0x03) {
+        ESP_LOGI(TAG, "Since the last byte of chip revision is 0x03. This is an ATECC608B chip");
+    } else if (rev_info[3] == 0x02) {
+        ESP_LOGI(TAG, "Since the last byte of chip revision is 0x02. This is a ATECC608A chip");
+    }
+
     if (ATCA_SUCCESS != (ret = atcab_read_serial_number(serial_no))) {
         ESP_LOGE(TAG, "Error in reading serial number, ret is %02x", ret);
         goto exit;
