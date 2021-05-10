@@ -47,6 +47,7 @@
 #include "atcacert/atcacert_client.h"
 #include "atcacert/atcacert_pem.h"
 #include "tng_atcacert_client.h"
+#include "hal_esp32_i2c.h"
 
 #include "mbedtls/atca_mbedtls_wrap.h"
 #include "mbedtls/debug.h"
@@ -118,22 +119,25 @@ int convert_pem_to_der( const unsigned char *input, size_t ilen,
     return ( 0 );
 }
 
-esp_err_t init_atecc608a(char *device_type, int *err_ret)
+esp_err_t init_atecc608a(char *device_type, uint8_t i2c_sda_pin, uint8_t i2c_scl_pin, int *err_ret)
 {
     int ret = 0;
     bool is_zone_locked = false;
     ECU_DEBUG_LOG(TAG, "initialize the ATECC interface...");
     sprintf(device_type, "%s", "TrustCustom");
+    hal_esp32_i2c0_set_pin_config(i2c_sda_pin,i2c_scl_pin);
+    ESP_LOGI(TAG, "debug - I2C pins selected are SDA = %d, SCL = %d", i2c_sda_pin, i2c_scl_pin);
 
     if (ATCA_SUCCESS != (ret = atcab_init(&cfg_ateccx08a_i2c_default))) {
         sprintf(device_type, "%s", "Trust&Go");
         /* Checking if the ATECC608 is of type Trust & GO */
-        cfg_ateccx08a_i2c_default.atcai2c.slave_address = 0x6A;
-
+        cfg_ateccx08a_i2c_default.atcai2c.address = 0x6A;
+        printf("\nnot trustngo\n");
         if (ATCA_SUCCESS != (ret = atcab_init(&cfg_ateccx08a_i2c_default))) {
             sprintf(device_type, "%s", "TrustFlex");
             /* Checking if the ATECC608 is of type TrustFlex */
-            cfg_ateccx08a_i2c_default.atcai2c.slave_address = 0x6C;
+            cfg_ateccx08a_i2c_default.atcai2c.address = 0x6C;
+            printf("\nnot trustflex\n");
 
             if (ATCA_SUCCESS != (ret = atcab_init(&cfg_ateccx08a_i2c_default))) {
                 ESP_LOGE(TAG, " failed\n  ! atcab_init returned %02x", ret);
@@ -142,6 +146,9 @@ esp_err_t init_atecc608a(char *device_type, int *err_ret)
 
         }
 
+    } else {
+        ESP_LOGE(TAG, " failed\n  ! atcab_init returned %02x", ret);
+        goto exit;
     }
 
     ECU_DEBUG_LOG(TAG, "\t\t OK");

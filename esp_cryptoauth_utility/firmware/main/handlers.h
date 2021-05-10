@@ -29,7 +29,7 @@ typedef enum cert_type {
     CERT_TYPE_SIGNER,
 } cert_type_t;
 
-esp_err_t init_atecc608a(char *device_type, int *err_code);
+esp_err_t init_atecc608a(char *device_type,uint8_t i2c_sda_pin, uint8_t i2c_scl_pin, int *err_code);
 esp_err_t atecc_print_info(uint8_t *serial_no, int *err_ret);
 esp_err_t atecc_keygen(int key_slot, unsigned char *pub_key_buf, int pub_key_buf_len, int *err_code);
 esp_err_t atecc_csr_gen(unsigned char *csr_buf, size_t csr_buf_len, int *err_code);

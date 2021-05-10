@@ -16,6 +16,7 @@ set(COMPONENT_SRCDIRS       "${CRYPTOAUTHLIB_DIR}/atcacert"
 
 set(COMPONENT_SRCS          "${COMPONENT_DIR}/cryptoauthlib/lib/hal/atca_hal.c"
                             "${COMPONENT_DIR}/cryptoauthlib/lib/hal/hal_freertos.c"
+                            "${COMPONENT_DIR}/cryptoauthlib/third_party/atca_mbedtls_patch.c"
                             "${COMPONENT_DIR}/cryptoauthlib/third_party/hal/esp32/hal_esp32_i2c.c"
                             "${COMPONENT_DIR}/cryptoauthlib/third_party/hal/esp32/hal_esp32_timer.c"
                             "${COMPONENT_DIR}/cryptoauthlib/third_party/atca_mbedtls_patch.c"
@@ -24,6 +25,8 @@ set(COMPONENT_SRCS          "${COMPONENT_DIR}/cryptoauthlib/lib/hal/atca_hal.c"
 set(COMPONENT_INCLUDEDIRS   "${CRYPTOAUTHLIB_DIR}/"
                             "${CRYPTOAUTHLIB_DIR}/hal"
                             "${CRYPTOAUTHLIB_DIR}/../app/tng"
+                            "${COMPONENT_DIR}/cryptoauthlib/third_party"
+                            "${COMPONENT_DIR}/cryptoauthlib/third_party/hal/esp32/"
                             "port"
                             )
 
@@ -46,7 +49,7 @@ idf_component_register(     SRC_DIRS        "${COMPONENT_SRCDIRS}"
 set(COMPONENT_COMPILE_OPTIONS -Wno-pointer-sign -Wno-maybe-uninitialized)
 target_sources(${COMPONENT_LIB} PRIVATE ${COMPONENT_SRCS})
 target_compile_definitions(${COMPONENT_LIB} PRIVATE ${COMPONENT_CFLAGS})
-set(COMPONENT_COMPILE_OPTIONS -Wno-pointer-sign -Wno-maybe-uninitialized)
+set(COMPONENT_COMPILE_OPTIONS -Wno-pointer-sign -Wno-maybe-uninitialized -Wno-nonnull)
 
 if (CONFIG_COMPILER_OPTIMIZATION_SIZE OR CONFIG_COMPILER_OPTIMIZATION_PERF)
     list(APPEND COMPONENT_COMPILE_OPTIONS -Wno-stringop-overflow)

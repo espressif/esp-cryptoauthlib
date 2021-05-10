@@ -108,7 +108,7 @@ static void scli_task(void *arg)
 
 void app_main()
 {
-    BaseType_t cli_task = xTaskCreate(scli_task, "scli_task", 20 * 1024, NULL, configMAX_PRIORITIES - 5, NULL);
+    BaseType_t cli_task = xTaskCreate(scli_task, "scli_task", 8 * 1024, NULL, configMAX_PRIORITIES - 5, NULL);
     if (cli_task != pdPASS) {
         ESP_LOGE(TAG, "Couldn't create scli thread");
     }
