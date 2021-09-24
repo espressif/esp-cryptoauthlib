@@ -31,7 +31,7 @@ COMPONENT_SRCDIRS += $(CRYPTOAUTHLIB_DIR)/hal \
 
 COMPONENT_ADD_INCLUDEDIRS := $(CRYPTOAUTHLIB_DIR) $(CRYPTOAUTHLIB_DIR)/hal $(CRYPTOAUTHLIB_DIR)/../app/tng port
 
+COMPONENT_PRIV_INCLUDEDIRS := port/include
+
 # Library requires some global defines
 CFLAGS+=-DESP32 -Wno-pointer-sign
-
-$(CRYPTOAUTHLIB_DIR)/hal/hal_freertos.o: CFLAGS+= -I$(IDF_PATH)/components/freertos/include/freertos
