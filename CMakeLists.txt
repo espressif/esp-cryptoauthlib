@@ -26,6 +26,8 @@ set(COMPONENT_INCLUDEDIRS   "${CRYPTOAUTHLIB_DIR}/"
                             "port"
                             )
 
+set(COMPONENT_PRIV_INCLUDEDIRS "port/include")
+
 set(COMPONENT_REQUIRES      "mbedtls" "freertos"  "driver")
 
 # Don't include the default interface configurations from cryptoauthlib
@@ -34,6 +36,7 @@ set(COMPONENT_CFLAGS "ESP32")
 
 idf_component_register(     SRC_DIRS        "${COMPONENT_SRCDIRS}"
                             INCLUDE_DIRS    "${COMPONENT_INCLUDEDIRS}"
+                            PRIV_INCLUDE_DIRS "${COMPONENT_PRIV_INCLUDEDIRS}"
                             REQUIRES        "${COMPONENT_REQUIRES}"
                             EXCLUDE_SRCS    "${COMPONENT_EXCLUDE_SRCS}"
                             )
@@ -41,6 +44,3 @@ idf_component_register(     SRC_DIRS        "${COMPONENT_SRCDIRS}"
 target_sources(${COMPONENT_LIB} PRIVATE ${COMPONENT_SRCS})
 target_compile_definitions(${COMPONENT_LIB} PRIVATE ${COMPONENT_CFLAGS})
 target_compile_options(${COMPONENT_LIB} PRIVATE -Wno-pointer-sign)
-
-idf_component_get_property(freertos_dir freertos COMPONENT_DIR)
-set_source_files_properties(${CRYPTOAUTHLIB_DIR}/hal/hal_freertos.c PROPERTIES COMPILE_FLAGS -I${freertos_dir}/include/freertos)
