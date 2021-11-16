@@ -40,7 +40,11 @@
 ATCAIfaceCfg cfg_ateccx08a_i2c_default = {
     .iface_type             = ATCA_I2C_IFACE,
     .devtype                = ATECC608A,
+#ifdef ATCA_ENABLE_DEPRECATED
+    .atcai2c.slave_address  = CONFIG_ATCA_I2C_ADDRESS,
+#else
     .atcai2c.address        = CONFIG_ATCA_I2C_ADDRESS,
+#endif
     .atcai2c.bus            = 0,
     .atcai2c.baud           = 100000,
     .wake_delay             = 1500,

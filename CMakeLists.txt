@@ -41,6 +41,11 @@ idf_component_register(     SRC_DIRS        "${COMPONENT_SRCDIRS}"
                             EXCLUDE_SRCS    "${COMPONENT_EXCLUDE_SRCS}"
                             )
 
+if ( IDF_VERSION_MAJOR EQUAL 4 AND IDF_VERSION_MIN EQUAL OR LESS 3 AND IDF_VERSION_PATCH LESS 1 )
+    target_compile_definitions(${COMPONENT_LIB} PUBLIC "-DATCA_ENABLE_DEPRECATED" )
+endif()
+                        
+
 target_sources(${COMPONENT_LIB} PRIVATE ${COMPONENT_SRCS})
 target_compile_definitions(${COMPONENT_LIB} PRIVATE ${COMPONENT_CFLAGS})
 target_compile_options(${COMPONENT_LIB} PRIVATE -Wno-pointer-sign)
