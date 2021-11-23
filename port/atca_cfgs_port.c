@@ -29,6 +29,7 @@
 #include "atca_cfgs.h"
 #include "atca_iface.h"
 #include "atca_device.h"
+#include "sdkconfig.h"
 
 /** \defgroup config Configuration (cfg_)
  * \brief Logical device configurations describe the CryptoAuth device type and logical interface.

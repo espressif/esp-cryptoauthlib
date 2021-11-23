@@ -3,6 +3,22 @@
 #ifndef ATCA_CONFIG_H
 #define ATCA_CONFIG_H
 
+#if __has_include("esp_idf_version.h")
+#include "esp_idf_version.h"
+#endif
+
+/*
+This requires the `esp_idf_version.h' to be defined.
+*/
+
+#ifdef ESP_IDF_VERSION
+
+#if ESP_IDF_VERSION <= ESP_IDF_VERSION_VAL(4, 3, 1)
+#define ATCA_ENABLE_DEPRECATED
+#endif
+
+#endif
+
 /* Include HALS */
 #define ATCA_HAL_I2C
 #define ATCA_USE_RTOS_TIMER 1
