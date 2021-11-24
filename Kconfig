@@ -40,5 +40,10 @@ menu "esp-cryptoauthlib"
     config ATCA_I2C_SCL_PIN
         int "I2C SCL pin used to communicate with the ATECC608A"
         default 17
-
+       
+    config ATCA_I2C_ADDRESS
+        hex "I2C device address of the ATECC608A"
+        default 0xC0 if ATECC608A_TCUSTOM
+        default 0x6C if ATECC608A_TFLEX
+        default 0x6A if ATECC608A_TNG
 endmenu # cryptoauthlib
