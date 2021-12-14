@@ -1,0 +1,19 @@
+name: Push esp-cryptoauthlib to Espressif Component Service
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  upload_components:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+
+      - name: Upload esp-cryptoauthlib to component service
+        uses: espressif/github-actions/upload_components@master
+        with:
+          name: esp-cryptoauthlib
+          namespace: "espressif"
+          api_token: ${{ secrets.IDF_COMPONENT_API_TOKEN }}
