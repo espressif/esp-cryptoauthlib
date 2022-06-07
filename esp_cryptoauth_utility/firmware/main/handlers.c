@@ -21,13 +21,6 @@
 
 #include <string.h>
 #include "stdio.h"
-#include "mbedtls/config.h"
-#include "mbedtls/platform.h"
-#include "mbedtls/pk.h"
-#include "mbedtls/rsa.h"
-#include "mbedtls/entropy.h"
-#include "mbedtls/ctr_drbg.h"
-#include "mbedtls/x509_csr.h"
 #include "mbedtls/base64.h"
 
 #include "esp_log.h"
@@ -50,8 +43,6 @@
 #include "hal_esp32_i2c.h"
 
 #include "mbedtls/atca_mbedtls_wrap.h"
-#include "mbedtls/debug.h"
-#include "mbedtls/ssl.h"
 
 static const char *TAG = "secure_element";
 static bool is_atcab_init = false;
@@ -333,7 +324,7 @@ esp_err_t get_cert_def(unsigned char *cert_def_array, size_t data_len, cert_type
 
     memset(cert_def_array, 0xff, data_len);
     do {
-        ret = xQueueReceive(uart_queue, (void * )&event, (portTickType) portMAX_DELAY);
+        ret = xQueueReceive(uart_queue, (void * )&event, (TickType_t) portMAX_DELAY);
         if (ret != pdPASS) {
             continue;
         }
@@ -416,7 +407,7 @@ esp_err_t atecc_input_cert(unsigned char *cert_buf, size_t cert_len, cert_type_t
 
     memset(cert_buf, 0xff, cert_len);
     do {
-        ret = xQueueReceive(uart_queue, (void * )&event, (portTickType) portMAX_DELAY);
+        ret = xQueueReceive(uart_queue, (void * )&event, (TickType_t) portMAX_DELAY);
         if (ret != pdPASS) {
             continue;
         }
