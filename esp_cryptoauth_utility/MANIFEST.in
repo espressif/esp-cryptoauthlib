@@ -1,0 +1,3 @@
+include sample_bins/*.bin
+include sample_certs/*.pem
+include VERSION
