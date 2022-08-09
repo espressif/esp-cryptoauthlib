@@ -149,6 +149,8 @@ def provision_trustcustom_device(esp, args, init_mfg):
         dec_device_cert = device_cert.decode()
         print(dec_device_cert)
         print("Saving device cert to output_files/device_cert.pem")
+        if not os.path.exists('output_files'):
+            os.makedirs('output_files')
 
         if esp_handle_file("./output_files/device_cert.pem", "write", dec_device_cert) is not True:
             print("Error in writing device certificate")
