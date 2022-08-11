@@ -25,7 +25,7 @@ try:
 except ImportError:
     print(
         "Package setuptools is missing from your Python installation. "
-        "Please see the installation section in the esp_cryptoauth_utillity documentation"
+        "Please see the installation section in the esp-cryptoauth-utillity documentation"
         " for instructions on how to install it."
     )
     exit(1)
@@ -34,15 +34,15 @@ VERSION = "0.9.0"
 
 long_description = """
 ==========
-esp_cryptoauth_utility
+esp-cryptoauth-utility
 ==========
 The python utility helps to configure and provision ATECC608 chip connected to ESP32 module. 
 
-The esp_cryptoauth_utility is `hosted on github <https://github.com/espressif/esp-cryptoauthlib/tree/master/esp_cryptoauth_utility>`_.
+The esp-cryptoauth-utility is `hosted on github <https://github.com/espressif/esp-cryptoauthlib/tree/master/esp_cryptoauth_utility>`_.
 
 Documentation
 -------------
-Visit online `esp_cryptoauth_utility documentation <https://github.com/espressif/esp-cryptoauthlib/tree/master/esp_cryptoauth_utility#readme/>`_ \
+Visit online `esp-cryptoauth-utility documentation <https://github.com/espressif/esp-cryptoauthlib/tree/master/esp_cryptoauth_utility#readme/>`_ \
 or run ``secure_cert_mfg.py.py -h``.
 
 License
@@ -51,7 +51,7 @@ The License for the project can be found `here <https://github.com/espressif/esp
 """
 
 setup(
-    name="esp_cryptoauth_utility",
+    name="esp-cryptoauth-utility",
     version=VERSION,
     description="A python utility which helps to configure and provision ATECC608 chip connected to ESP32 module",
     long_description=long_description,
