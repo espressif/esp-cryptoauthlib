@@ -55,7 +55,7 @@ setup(
     version=VERSION,
     description="A python utility which helps to configure and provision ATECC608 chip connected to ESP32 module",
     long_description=long_description,
-    long_description_content_type='test/x-rst',
+    long_description_content_type='text/x-rst',
     url="https://github.com/espressif/esp-cryptoauthlib/tree/master/esp_cryptoauth_utility",
     project_urls={
         "Documentation": "https://github.com/espressif/esp-cryptoauthlib/tree/master/esp_cryptoauth_utility#readme",
