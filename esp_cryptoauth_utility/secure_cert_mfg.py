@@ -27,9 +27,8 @@ except ImportError:  # cheat and use IDF's copy of esptool if available
     sys.path.insert(0, os.path.join(idf_path, "components", "esptool_py", "esptool"))
     import esptool
 
-
-BINARY_STUB_PATH = '/sample_bins/secure_cert_mfg.bin'
-
+BINARY_STUB_PATH = os.path.join(os.path.dirname(__file__),
+                                'sample_bins', 'secure_cert_mfg.bin')
 
 def main():
     parser = argparse.ArgumentParser(description='''Provision the ESPWROOM32SE device with
@@ -38,14 +37,14 @@ def main():
     parser.add_argument(
         '--signer-cert',
         dest='signer_cert',
-        default='sample_certs/sample_signer_cert.pem',
+        default=os.path.join(os.path.dirname(__file__), 'sample_certs', 'sample_signer_cert.pem'),
         metavar='relative/path/to/signer_cert.pem',
         help='relative path(from secure_cert_mfg.py) to signer certificate.')
 
     parser.add_argument(
         '--signer-cert-private-key',
         dest='signer_privkey',
-        default='sample_certs/sample_signer_key.pem',
+        default=os.path.join(os.path.dirname(__file__), 'sample_certs', 'sample_signer_key.pem'),
         metavar='relative/path/to/signer-priv-key',
         help='relative path(from secure_cert_mfg.py) to signer certificate private key')
 

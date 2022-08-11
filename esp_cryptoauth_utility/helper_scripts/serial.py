@@ -91,12 +91,12 @@ def _exec_shell_cmd(self, command):
 
 def load_app_stub(bin_path, esp):
     esp.connect()
-    abs_bin_path = os.path.dirname(os.path.abspath(__file__)) + '/../' + bin_path
-    if (os.path.exists(abs_bin_path) is False):
+    # Absolute path needs to be sent here
+    if (os.path.exists(bin_path) is False):
         print("Stub not found")
         exit(0)
     arg_tuple = collections.namedtuple('ram_image', ['filename'])
-    args = arg_tuple(abs_bin_path)
+    args = arg_tuple(bin_path)
     esp.change_baud(baud=921600)
     esptool.load_ram(esp, args)
 
