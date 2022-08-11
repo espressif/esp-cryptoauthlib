@@ -20,19 +20,19 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip build setuptools twine
-    - name: Build and upload esp_cryptoauth_utility ${{ github.event.release.tag_name }}
+    - name: Build and upload esp-cryptoauth-utility ${{ github.event.release.tag_name }}
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_PROJECT_TOKEN }}
       working-directory: ./esp_cryptoauth_utility
       run: |
-        PUBLISHED_VERSION=$(curl https://pypi.org/pypi/esp_cryptoauth_utility/json 2>/dev/null | jq -r '.info.version')
+        PUBLISHED_VERSION=$(curl https://pypi.org/pypi/esp-cryptoauth-utility/json 2>/dev/null | jq -r '.info.version')
         CURRENT_VERSION=$(python setup.py --version 2>/dev/null)
         if [ "$PUBLISHED_VERSION" == "$CURRENT_VERSION" ]; then
           echo "Version ${PUBLISHED_VERSION} already published, skipping..."
           exit 1
         else
-          echo "Packaging and publishing new esp_cryptoauth_utility version: ${CURRENT_VERSION}"
+          echo "Packaging and publishing new esp-cryptoauth-utility version: ${CURRENT_VERSION}"
           python setup.py sdist
           tar -ztvf dist/*
           twine upload dist/*
