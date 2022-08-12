@@ -18,6 +18,9 @@ import helper_scripts as hs
 import binascii
 import os
 import sys
+import sample_bins
+import sample_certs
+
 try:
     import esptool
 except ImportError:  # cheat and use IDF's copy of esptool if available
@@ -27,8 +30,15 @@ except ImportError:  # cheat and use IDF's copy of esptool if available
     sys.path.insert(0, os.path.join(idf_path, "components", "esptool_py", "esptool"))
     import esptool
 
-BINARY_STUB_PATH = os.path.join(os.path.dirname(__file__),
-                                'sample_bins', 'secure_cert_mfg.bin')
+BINARY_STUB_PATH = os.path.join(sample_bins.__path__[0],
+                                'secure_cert_mfg.bin')
+
+SAMPLE_SIGNERCERT_PATH = os.path.join(sample_certs.__path__[0],
+                                      'sample_signer_cert.pem')
+
+SAMPLE_SIGNERKEY_PATH = os.path.join(sample_certs.__path__[0],
+                                     'sample_signer_key.pem')
+
 
 def main():
     parser = argparse.ArgumentParser(description='''Provision the ESPWROOM32SE device with
@@ -37,14 +47,14 @@ def main():
     parser.add_argument(
         '--signer-cert',
         dest='signer_cert',
-        default=os.path.join(os.path.dirname(__file__), 'sample_certs', 'sample_signer_cert.pem'),
+        default=SAMPLE_SIGNERCERT_PATH,
         metavar='relative/path/to/signer_cert.pem',
         help='relative path(from secure_cert_mfg.py) to signer certificate.')
 
     parser.add_argument(
         '--signer-cert-private-key',
         dest='signer_privkey',
-        default=os.path.join(os.path.dirname(__file__), 'sample_certs', 'sample_signer_key.pem'),
+        default=SAMPLE_SIGNERKEY_PATH,
         metavar='relative/path/to/signer-priv-key',
         help='relative path(from secure_cert_mfg.py) to signer certificate private key')
 
