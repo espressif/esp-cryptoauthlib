@@ -30,7 +30,7 @@ except ImportError:
     )
     exit(1)
 
-VERSION = "0.9.0"
+VERSION = "0.9.1"
 
 long_description = """
 ======================
@@ -43,7 +43,7 @@ The esp-cryptoauth-utility is `hosted on github <https://github.com/espressif/es
 Documentation
 -------------
 Visit online `esp-cryptoauth-utility documentation <https://github.com/espressif/esp-cryptoauthlib/tree/master/esp_cryptoauth_utility#readme/>`_ \
-or run ``secure_cert_mfg.py.py -h``.
+or run ``secure_cert_mfg.py -h``.
 
 License
 -------
@@ -78,6 +78,7 @@ setup(
     python_requires=">=3.7",
     setup_requires=(["wheel"] if "bdist_wheel" in sys.argv else []),
     install_requires=get_install_requires(),
+    include_package_data = True,
     packages=find_packages(),
     scripts=["secure_cert_mfg.py"],
 )
