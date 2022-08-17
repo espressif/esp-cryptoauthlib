@@ -30,7 +30,7 @@ jobs:
         CURRENT_VERSION=$(python setup.py --version 2>/dev/null)
         if [ "$PUBLISHED_VERSION" == "$CURRENT_VERSION" ]; then
           echo "Version ${PUBLISHED_VERSION} already published, skipping..."
-          exit 1
+          exit 0
         else
           echo "Packaging and publishing new esp-cryptoauth-utility version: ${CURRENT_VERSION}"
           python setup.py sdist
