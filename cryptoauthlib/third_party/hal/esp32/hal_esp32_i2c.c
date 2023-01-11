@@ -101,7 +101,7 @@ ATCA_STATUS hal_i2c_init(ATCAIface iface, ATCAIfaceCfg *cfg)
             i2c_hal_data[bus].conf.mode = I2C_MODE_MASTER;
             i2c_hal_data[bus].conf.sda_pullup_en = GPIO_PULLUP_DISABLE;
             i2c_hal_data[bus].conf.scl_pullup_en = GPIO_PULLUP_DISABLE;
-            i2c_hal_data[bus].conf.master.clk_speed = 100000; //cfg->atcai2c.baud;
+            i2c_hal_data[bus].conf.master.clk_speed = cfg->atcai2c.baud;
 
             switch (bus)
             {
