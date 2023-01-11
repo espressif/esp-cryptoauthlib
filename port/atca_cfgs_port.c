@@ -47,7 +47,7 @@ ATCAIfaceCfg cfg_ateccx08a_i2c_default = {
     .atcai2c.address        = CONFIG_ATCA_I2C_ADDRESS,
 #endif
     .atcai2c.bus            = 0,
-    .atcai2c.baud           = 100000,
+    .atcai2c.baud           = CONFIG_ATCA_I2C_BAUD_RATE,
     .wake_delay             = 1500,
     .rx_retries             = 20
 };

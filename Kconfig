@@ -46,4 +46,10 @@ menu "esp-cryptoauthlib"
         default 0xC0 if ATECC608A_TCUSTOM
         default 0x6C if ATECC608A_TFLEX
         default 0x6A if ATECC608A_TNG
+
+    config ATCA_I2C_BAUD_RATE
+        int "I2C baud rate in Hz"
+        default 100000
+        range 100000 1000000
+
 endmenu # cryptoauthlib
