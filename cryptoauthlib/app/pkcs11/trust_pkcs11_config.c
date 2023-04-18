@@ -38,8 +38,21 @@
 const char pkcs11_trust_device_label[] = "device";
 const char pkcs11_trust_signer_label[] = "signer";
 const char pkcs11_trust_root_label[] = "root";
+
+
+/* Per PKCS11 ECDSA private keys must have a matching public key. It is
+   consider best practice for these keys to have the same label and the
+   library will create the matching public key object whenever a private
+   key is specified in the configuration or is created with the genkey
+   mechanism. However in a static configuration it is possible to 
+   circumvent this alignment by defining PKCS11_TNG_NONMATCHING_LABELS */
+#ifdef PKCS11_TNG_NONMATCHING_LABELS
 const char pkcs11_trust_device_private_key_label[] = "device private";
 const char pkcs11_trust_device_public_key_label[] = "device public";
+#else
+const char pkcs11_trust_device_private_key_label[] = "device";
+const char pkcs11_trust_device_public_key_label[] = "device";    
+#endif
 
 /* Helper function to assign the proper fields to an certificate object from a cert def */
 CK_RV pkcs11_trust_config_cert(pkcs11_lib_ctx_ptr pLibCtx, pkcs11_slot_ctx_ptr pSlot, pkcs11_object_ptr pObject, CK_ATTRIBUTE_PTR pLabel)
@@ -151,11 +164,11 @@ CK_RV pkcs11_trust_load_objects(pkcs11_slot_ctx_ptr pSlot)
 
     if (CKR_OK == rv)
     {
-        rv = pkcs11_object_alloc(&pObject);
+        rv = pkcs11_object_alloc(pSlot->slot_id, &pObject);
         if (pObject)
         {
             /* Slot 0 - Device Private Key */
-            pkcs11_config_init_private(pObject, (char*)pkcs11_trust_device_label, strlen(pkcs11_trust_device_label));
+            pkcs11_config_init_private(pObject, (char*)pkcs11_trust_device_private_key_label, strlen(pkcs11_trust_device_private_key_label));
             pObject->slot = 0;
             pObject->flags |= PKCS11_OBJECT_FLAG_TRUST_TYPE;
             pObject->config = &pSlot->cfg_zone;
@@ -164,11 +177,11 @@ CK_RV pkcs11_trust_load_objects(pkcs11_slot_ctx_ptr pSlot)
 
     if (CKR_OK == rv)
     {
-        rv = pkcs11_object_alloc(&pObject);
+        rv = pkcs11_object_alloc(pSlot->slot_id, &pObject);
         if (pObject)
         {
             /* Slot 0 - Device Public Key */
-            pkcs11_config_init_public(pObject, (char*)pkcs11_trust_device_label, strlen(pkcs11_trust_device_label));
+            pkcs11_config_init_public(pObject, (char*)pkcs11_trust_device_public_key_label, strlen(pkcs11_trust_device_public_key_label));
             pObject->slot = 0;
             pObject->flags |= PKCS11_OBJECT_FLAG_TRUST_TYPE;
             pObject->config = &pSlot->cfg_zone;
@@ -177,7 +190,7 @@ CK_RV pkcs11_trust_load_objects(pkcs11_slot_ctx_ptr pSlot)
 
     if (CKR_OK == rv)
     {
-        rv = pkcs11_object_alloc(&pObject);
+        rv = pkcs11_object_alloc(pSlot->slot_id, &pObject);
         if (pObject)
         {
             /* Device Certificate */
@@ -190,7 +203,7 @@ CK_RV pkcs11_trust_load_objects(pkcs11_slot_ctx_ptr pSlot)
 
     if (CKR_OK == rv)
     {
-        rv = pkcs11_object_alloc(&pObject);
+        rv = pkcs11_object_alloc(pSlot->slot_id, &pObject);
         if (pObject)
         {
             /* Signer Certificate */

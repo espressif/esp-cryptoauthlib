@@ -20,9 +20,10 @@
 #include "esp_log.h"
 #include "cryptoauthlib.h"
 
-#define I2C_SDA_PIN                       CONFIG_ATCA_I2C_SDA_PIN
-#define I2C_SCL_PIN                       CONFIG_ATCA_I2C_SCL_PIN
-
+#define I2C0_SDA_PIN                       16
+#define I2C0_SCL_PIN                       17
+#define I2C1_SDA_PIN                       21
+#define I2C1_SCL_PIN                       22
 #define ACK_CHECK_EN                       0x1              /*!< I2C master will check ack from slave*/
 #define ACK_CHECK_DIS                      0x0              /*!< I2C master will not check ack from slave */
 #define ACK_VAL                            0x0              /*!< I2C ack value */
@@ -101,21 +102,23 @@ ATCA_STATUS hal_i2c_init(ATCAIface iface, ATCAIfaceCfg *cfg)
             i2c_hal_data[bus].conf.mode = I2C_MODE_MASTER;
             i2c_hal_data[bus].conf.sda_pullup_en = GPIO_PULLUP_DISABLE;
             i2c_hal_data[bus].conf.scl_pullup_en = GPIO_PULLUP_DISABLE;
-            i2c_hal_data[bus].conf.master.clk_speed = cfg->atcai2c.baud;
+            i2c_hal_data[bus].conf.master.clk_speed = 100000; //cfg->atcai2c.baud;
 
             switch (bus)
             {
-                case 0:
-                    i2c_hal_data[bus].id = I2C_NUM_0;
-                    break;
-                case 1:
-                    i2c_hal_data[bus].id = I2C_NUM_1;
-                default:
-                    break;
+            case 0:
+                i2c_hal_data[bus].id = I2C_NUM_0;
+                i2c_hal_data[bus].conf.sda_io_num = I2C0_SDA_PIN;
+                i2c_hal_data[bus].conf.scl_io_num = I2C0_SCL_PIN;
+                break;
+            case 1:
+                i2c_hal_data[bus].id = I2C_NUM_1;
+                i2c_hal_data[bus].conf.sda_io_num = I2C1_SDA_PIN;
+                i2c_hal_data[bus].conf.scl_io_num = I2C1_SCL_PIN;
+                break;
+            default:
+                break;
             }
-
-            i2c_hal_data[bus].conf.sda_io_num = I2C_SDA_PIN;
-            i2c_hal_data[bus].conf.scl_io_num = I2C_SCL_PIN;
 
 //            ESP_LOGI(TAG, "Configuring I2C");
             rc = i2c_param_config(i2c_hal_data[bus].id, &i2c_hal_data[bus].conf);

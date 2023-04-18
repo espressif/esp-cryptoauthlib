@@ -36,6 +36,7 @@
  *
  *  \return ATCA_SUCCESS on success, otherwise an error code.
  */
+#if CALIB_READ_EN
 ATCA_STATUS calib_is_slot_locked(ATCADevice device, uint16_t slot, bool* is_locked)
 {
     ATCA_STATUS status = ATCA_GEN_FAIL;
@@ -106,9 +107,9 @@ ATCA_STATUS calib_is_locked(ATCADevice device, uint8_t zone, bool* is_locked)
 
     return status;
 }
+#endif /* CALIB_READ_EN */
 
-
-#ifdef ATCA_ECC204_SUPPORT
+#if ATCA_CA2_SUPPORT
 /** \brief Use Info command to check ECC204 Config zone lock status
  *
  *  \param[in]   device       Device context pointer
@@ -116,7 +117,7 @@ ATCA_STATUS calib_is_locked(ATCADevice device, uint8_t zone, bool* is_locked)
  *
  *  \return ATCA_SUCCESS on success, otherwise an error code
  */
-ATCA_STATUS calib_ecc204_is_config_locked(ATCADevice device, bool* is_locked)
+ATCA_STATUS calib_ca2_is_config_locked(ATCADevice device, bool* is_locked)
 {
     ATCA_STATUS status = ATCA_SUCCESS;
     uint16_t param2;
@@ -129,7 +130,7 @@ ATCA_STATUS calib_ecc204_is_config_locked(ATCADevice device, bool* is_locked)
 
     while (slot <= 3)
     {
-        param2 = ATCA_ECC204_ZONE_CONFIG | (slot << 1);
+        param2 = ATCA_ZONE_CA2_CONFIG | (slot << 1);
         if (ATCA_SUCCESS != (status = calib_info_lock_status(device, param2, (uint8_t*)is_locked)))
         {
             *is_locked = false;
@@ -156,7 +157,7 @@ ATCA_STATUS calib_ecc204_is_config_locked(ATCADevice device, bool* is_locked)
  *
  *  \return ATCA_SUCCESS on success, otherwise an error code
  */
-ATCA_STATUS calib_ecc204_is_data_locked(ATCADevice device, bool* is_locked)
+ATCA_STATUS calib_ca2_is_data_locked(ATCADevice device, bool* is_locked)
 {
     ATCA_STATUS status = ATCA_SUCCESS;
     uint16_t param2;
@@ -169,7 +170,7 @@ ATCA_STATUS calib_ecc204_is_data_locked(ATCADevice device, bool* is_locked)
 
     while (slot <= 3)
     {
-        param2 = ATCA_ECC204_ZONE_DATA | (slot << 1);
+        param2 = ATCA_ZONE_CA2_DATA | (slot << 1);
         if (ATCA_SUCCESS != (status = calib_info_lock_status(device, param2, (uint8_t*)is_locked)))
         {
             *is_locked = false;
@@ -197,17 +198,17 @@ ATCA_STATUS calib_ecc204_is_data_locked(ATCADevice device, bool* is_locked)
  *
  *  \return ATCA_SUCCESS on success, otherwise an error code
  */
-ATCA_STATUS calib_ecc204_is_locked(ATCADevice device, uint8_t zone, bool* is_locked)
+ATCA_STATUS calib_ca2_is_locked(ATCADevice device, uint8_t zone, bool* is_locked)
 {
     ATCA_STATUS status = ATCA_SUCCESS;
 
-    if (ATCA_ECC204_ZONE_CONFIG == zone)
-    {
-        status = calib_ecc204_is_config_locked(device, is_locked);
+    if (ATCA_ZONE_CONFIG == zone)
+    {   
+        status = calib_ca2_is_config_locked(device, is_locked);
     }
-    else if (ATCA_ECC204_ZONE_DATA == zone)
+    else if (ATCA_ZONE_DATA == zone)
     {
-        status = calib_ecc204_is_data_locked(device, is_locked);
+        status = calib_ca2_is_data_locked(device, is_locked);
     }
     else
     {
@@ -219,6 +220,33 @@ ATCA_STATUS calib_ecc204_is_locked(ATCADevice device, uint8_t zone, bool* is_loc
 
 #endif
 
+#if CALIB_READ_EN || CALIB_READ_CA2_EN
+
+ATCA_STATUS calib_is_locked_ext(ATCADevice device, uint8_t zone, bool* is_locked)
+{
+    ATCA_STATUS status = ATCA_BAD_PARAM;
+
+#if ATCA_CA2_SUPPORT
+    ATCADeviceType device_type = atcab_get_device_type_ext(device);
+
+    if (atcab_is_ca2_device(device_type))
+    {
+        if (LOCK_ZONE_DATA == zone)
+        {
+            zone = ATCA_ZONE_DATA;
+        }
+        status = calib_ca2_is_locked(device, zone, is_locked);
+    }
+    else
+#endif
+    {
+#if CALIB_READ_EN
+        status = calib_is_locked(device, zone, is_locked);
+#endif
+    }
+
+    return status;
+}
 
 /** \brief Check if a slot is a private key
  *
@@ -237,6 +265,7 @@ ATCA_STATUS calib_is_private(ATCADevice device, uint16_t slot, bool* is_private)
     {
         switch (dev_type)
         {
+#if CALIB_READ_EN
         case ATECC108A:
         /* fallthrough */
         case ATECC508A:
@@ -250,8 +279,12 @@ ATCA_STATUS calib_is_private(ATCADevice device, uint16_t slot, bool* is_private)
             }
             break;
         }
-#ifdef ATCA_ECC204_SUPPORT
+#endif
+#if ATCA_CA2_SUPPORT
         case ECC204:
+            /* fallthrough */
+        case TA010:
+            *is_private = (0 == slot) ? true : false;
             break;
 #endif
         default:
@@ -262,3 +295,74 @@ ATCA_STATUS calib_is_private(ATCADevice device, uint16_t slot, bool* is_private)
 
     return status;
 }
+
+#endif
+
+/** \brief Parse the revision field to get the device type */
+ATCADeviceType calib_get_devicetype(uint8_t revision[4])
+{
+    ATCADeviceType ret = ATCA_DEV_UNKNOWN;
+    switch(revision[2])
+    {
+        case 0x00:
+            /* fallthrough */
+        case 0x02:
+            ret = ATSHA204A;
+            break;
+        case 0x10: 
+            ret = ATECC108A;
+            break;
+        case 0x50:
+            ret = ATECC508A;
+            break;
+        case 0x60:
+            ret = ATECC608;
+            break;
+        case 0x20:
+    #if ATCA_CA2_SUPPORT
+            ret = calib_get_devicetype_with_device_id(revision[1], revision[3]);
+    #endif
+            break;
+        case 0x40:
+            ret = ATSHA206A;
+            break;
+        default:
+            break;
+    }
+    return ret;
+}
+
+#if ATCA_CA2_SUPPORT
+ATCADeviceType calib_get_devicetype_with_device_id(uint8_t device_id,uint8_t device_revision)
+{
+    ATCADeviceType device_type;
+
+    if (device_revision == 0x00)
+    {
+        device_type = ECC204;
+    }
+    else
+    {
+        switch(device_id)
+        {
+            case ATCA_ECC204_DEVICE_ID:
+                device_type = ECC204;
+                break;
+            case ATCA_TA010_DEVICE_ID:
+                device_type = TA010;
+                break;
+            case ATCA_SHA104_DEVICE_ID:
+                device_type = SHA104;
+                break;
+            case ATCA_SHA105_DEVICE_ID:
+                device_type = SHA105;
+                break;
+            default:
+                device_type = ATCA_DEV_UNKNOWN;
+                break;
+        }
+    }
+    
+    return device_type;
+}
+#endif

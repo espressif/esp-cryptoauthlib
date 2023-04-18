@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <string.h>
 #include "cryptoauthlib.h"
 #include "atca_helpers.h"
 
@@ -88,7 +89,7 @@ static void hex_to_lowercase(char *buffer, size_t length)
     {
         for (index = 0; index < length; index++)
         {
-            buffer[index] = tolower(buffer[index]);
+            buffer[index] = (uint8_t)(tolower(buffer[index]));
         }
     }
 }
@@ -102,7 +103,7 @@ static void hex_to_uppercase(char *buffer, size_t length)
     {
         for (index = 0; index < length; index++)
         {
-            buffer[index] = toupper(buffer[index]);
+            buffer[index] = (uint8_t)(toupper(buffer[index]));
         }
     }
 }
@@ -277,7 +278,7 @@ ATCA_STATUS atcab_hex2bin_(const char* hex, size_t hex_size, uint8_t* bin, size_
         if (is_upper_nibble)
         {
             // Upper nibble
-            bin[bin_index] = hex_digit_to_num(hex[hex_index]) << 4;
+            bin[bin_index] = (uint8_t)(hex_digit_to_num(hex[hex_index]) << 4);
         }
         else
         {
@@ -612,17 +613,17 @@ static ATCA_STATUS atcab_base64decode_block(const uint8_t id[4], uint8_t* data, 
         }
 
         // Decode into output buffer
-        data[(*data_size)++] = ((id[0] << 2) | (id[1] >> 4));
+        data[(*data_size)++] = (uint8_t)((id[0] << 2) | (id[1] >> 4));
         if (id[2] == B64_IS_EQUAL)
         {
             break;
         }
-        data[(*data_size)++] = ((id[1] << 4) | (id[2] >> 2));
+        data[(*data_size)++] = (uint8_t)((id[1] << 4) | (id[2] >> 2));
         if (id[3] == B64_IS_EQUAL)
         {
             break;
         }
-        data[(*data_size)++] = ((id[2] << 6) | id[3]);
+        data[(*data_size)++] = (uint8_t)((id[2] << 6) | id[3]);
     }
     while (false);
 
@@ -776,12 +777,12 @@ ATCA_STATUS atcab_base64encode_(
 
             id = (data[data_idx] & 0xFC) >> 2;
             encoded[b64_idx++] = base64Char(id, rules);
-            id = (data[data_idx] & 0x03) << 4;
+            id = (uint8_t)((data[data_idx] & 0x03) << 4);
             if (data_idx + 1 < data_size)
             {
                 id |= (data[data_idx + 1] & 0xF0) >> 4;
                 encoded[b64_idx++] = base64Char(id, rules);
-                id = (data[data_idx + 1] & 0x0F) << 2;
+                id = (uint8_t)((data[data_idx + 1] & 0x0F) << 2);
                 if (data_idx + 2 < data_size)
                 {
                     id |= (data[data_idx + 2] & 0xC0) >> 6;
@@ -853,6 +854,7 @@ ATCA_STATUS atcab_base64decode(const char* encoded, size_t encoded_len, uint8_t*
     return atcab_base64decode_(encoded, encoded_len, byte_array, array_len, atcab_b64rules_default);
 }
 
+#if !defined(ATCA_PLATFORM_MEMSET_S) && !defined(memset_s)
 /**
  * \brief Guaranteed to perform memory writes regardless of optimization level. Matches memset_s signature
  */
@@ -874,8 +876,57 @@ int atcab_memset_s(void* dest, size_t destsz, int ch, size_t count)
     volatile unsigned char* p = dest;
     while (destsz-- && count--)
     {
-        *p++ = ch;
+        *p++ = (uint8_t)ch;
     }
 
     return 0;
 }
+#endif
+
+#if !defined(ATCA_PLATFORM_STRCASESTR) && !defined(strcasecstr)
+/**
+ * \brief Search for a substring in a case insenstive format
+ */
+char * lib_strcasestr(const char *haystack, const char *needle)
+{
+    const char * h = haystack;
+    const char * n = needle;
+    const char * m = NULL;
+
+    if (!h || !n)
+    {
+        return (char*)h;
+    }
+
+    while(*h && *n)
+    {
+        if (*h != *n && *h != toupper(*n))
+        {
+            if(m)
+            {
+                /* Restart Matching */
+                m = NULL;
+                n = needle;
+            }
+            else 
+            {
+                /* Continue stepping through the haystack */
+                h++;
+            }
+        }
+        else
+        {
+            if (!m)
+            {
+                /* Save the start of the match */
+                m = h;
+            }
+            n++;
+            h++;
+        }
+    }
+
+    /* if we reached the end of the needle then it was found */
+    return (char*)((!*n) ? m : NULL);
+}
+#endif

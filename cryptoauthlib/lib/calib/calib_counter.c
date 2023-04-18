@@ -34,6 +34,7 @@
 
 #include "cryptoauthlib.h"
 
+#if CALIB_COUNTER_EN
 /** \brief Compute the Counter functions
  *  \param[in]  device         Device context pointer
  *  \param[in]  mode           the mode used for the counter
@@ -74,10 +75,22 @@ ATCA_STATUS calib_counter(ATCADevice device, uint8_t mode, uint16_t counter_id, 
         {
             if (packet.data[ATCA_COUNT_IDX] == 7)
             {
-                *counter_value = ((uint32_t)packet.data[ATCA_RSP_DATA_IDX + 0] <<  0) |
-                                 ((uint32_t)packet.data[ATCA_RSP_DATA_IDX + 1] <<  8) |
-                                 ((uint32_t)packet.data[ATCA_RSP_DATA_IDX + 2] << 16) |
-                                 ((uint32_t)packet.data[ATCA_RSP_DATA_IDX + 3] << 24);
+                if (atcab_is_ca2_device(device->mIface.mIfaceCFG->devtype))
+                {
+                    #if ATCA_CA2_SUPPORT
+                    *counter_value = ((uint32_t)packet.data[ATCA_RSP_DATA_IDX + 3] <<  0) |
+                                     ((uint32_t)packet.data[ATCA_RSP_DATA_IDX + 2] <<  8) |
+                                     ((uint32_t)packet.data[ATCA_RSP_DATA_IDX + 1] << 16) |
+                                     ((uint32_t)packet.data[ATCA_RSP_DATA_IDX + 0] << 24);
+                    #endif
+                }
+                else
+                {
+                    *counter_value = ((uint32_t)packet.data[ATCA_RSP_DATA_IDX + 0] <<  0) |
+                                     ((uint32_t)packet.data[ATCA_RSP_DATA_IDX + 1] <<  8) |
+                                     ((uint32_t)packet.data[ATCA_RSP_DATA_IDX + 2] << 16) |
+                                     ((uint32_t)packet.data[ATCA_RSP_DATA_IDX + 3] << 24);
+                }
             }
             else
             {
@@ -113,3 +126,4 @@ ATCA_STATUS calib_counter_read(ATCADevice device, uint16_t counter_id, uint32_t*
 {
     return calib_counter(device, COUNTER_MODE_READ, counter_id, counter_value);
 }
+#endif /* CALIB_COUNTER_EN */

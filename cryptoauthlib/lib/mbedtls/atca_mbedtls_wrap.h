@@ -35,8 +35,9 @@
  *
    @{ */
 
-#include "cryptoauthlib.h"
 #include "atca_device.h"
+
+#include "mbedtls/bignum.h"
 
 #ifdef __cplusplus
 extern "C" {

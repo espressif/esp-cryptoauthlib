@@ -61,7 +61,18 @@ static ATCAHAL_t hal_swi_uart = {
 };
 #endif
 
-#ifdef ATCA_HAL_UART
+#if defined(ATCA_HAL_SWI_GPIO) || defined(ATCA_HAL_SWI_BB)
+static ATCAHAL_t hal_swi_gpio = {
+    hal_swi_gpio_init,
+    hal_swi_gpio_post_init,
+    hal_swi_gpio_send,
+    hal_swi_gpio_receive,
+    hal_swi_gpio_control,
+    hal_swi_gpio_release
+};
+#endif
+
+#if defined(ATCA_HAL_UART) || defined(ATCA_HAL_SWI_UART) || defined(ATCA_HAL_KIT_UART)
 static ATCAHAL_t hal_uart = {
     hal_uart_init,
     hal_uart_post_init,
@@ -83,15 +94,13 @@ static ATCAHAL_t hal_spi = {
 };
 #endif
 
-#ifdef ATCA_HAL_GPIO
+#if defined(ATCA_HAL_GPIO) || defined(ATCA_HAL_BB)
 static ATCAHAL_t hal_gpio = {
     hal_gpio_init,
     hal_gpio_post_init,
-    hal_gpio_send,
-    hal_gpio_receive,
-    hal_gpio_wake,
-    hal_gpio_idle,
-    hal_gpio_sleep,
+    hal_gpio_send,          /* Set IO State */
+    hal_gpio_receive,       /* Read IO State */
+    hal_gpio_control,
     hal_gpio_release
 };
 #endif
@@ -146,25 +155,27 @@ typedef struct
 
 static atca_hal_list_entry_t atca_registered_hal_list[ATCA_MAX_HAL_CACHE] = {
 #ifdef ATCA_HAL_I2C
-    { ATCA_I2C_IFACE,      &hal_i2c,        NULL      },
+    { ATCA_I2C_IFACE,      &hal_i2c,             NULL                         },
 #endif
 #ifdef ATCA_HAL_SWI_UART
-    { ATCA_SWI_IFACE,      &hal_swi_uart,   &hal_uart },
+    { ATCA_SWI_IFACE,      &hal_swi_uart,        &hal_uart                    },
 #endif
 #ifdef ATCA_HAL_KIT_UART
-    { ATCA_UART_IFACE,     &hal_kit_v1,     &hal_uart },
+    { ATCA_UART_IFACE,     &hal_kit_v1,          &hal_uart                    },
+#elif defined(ATCA_HAL_UART)
+    { ATCA_UART_IFACE,     &hal_uart,            NULL                         },
 #endif
 #ifdef ATCA_HAL_SPI
-    { ATCA_SPI_IFACE,      &hal_spi,        NULL      },
+    { ATCA_SPI_IFACE,      &hal_spi,             NULL                         },
 #endif
 #ifdef ATCA_HAL_KIT_HID
-    { ATCA_HID_IFACE,      &hal_kit_v1,     &hal_hid  },
+    { ATCA_HID_IFACE,      &hal_kit_v1,          &hal_hid                     },
 #endif
 #ifdef ATCA_HAL_KIT_BRIDGE
-    { ATCA_KIT_IFACE,      &hal_kit_bridge, NULL      },
+    { ATCA_KIT_IFACE,      &hal_kit_bridge,      NULL                         },
 #endif
-#if ATCA_HAL_SWI_GPIO
-    { ATCA_SWI_GPIO_IFACE, &hal_gpio,       NULL      },
+#if defined(ATCA_HAL_SWI_GPIO) || defined(ATCA_HAL_SWI_BB)
+    { ATCA_SWI_GPIO_IFACE, &hal_swi_gpio,        &hal_gpio                    },
 #endif
 };
 
@@ -242,6 +253,7 @@ static ATCA_STATUS hal_iface_set_registered(ATCAIfaceType iface_type, ATCAHAL_t*
         }
         else if (empty < atca_registered_hal_list_size)
         {
+            atca_registered_hal_list[empty].iface_type = iface_type;
             atca_registered_hal_list[empty].hal = hal;
             atca_registered_hal_list[empty].hal = phy;
             status = ATCA_SUCCESS;
@@ -273,7 +285,7 @@ ATCA_STATUS hal_iface_register_hal(ATCAIfaceType iface_type, ATCAHAL_t *hal, ATC
         status = hal_iface_set_registered(iface_type, hal, phy);
     }
 
-    return ATCA_SUCCESS;
+    return status;
 }
 
 /** \brief Standard HAL API for ATCA to initialize a physical interface
@@ -330,7 +342,20 @@ ATCA_STATUS hal_iface_release(ATCAIfaceType iface_type, void *hal_data)
 
     if (ATCA_SUCCESS == status)
     {
-        status = hal->halrelease ? hal->halrelease(hal_data) : ATCA_BAD_PARAM;
+        if (hal && hal->halrelease)
+        {
+            status = hal->halrelease(hal_data);
+        }
+
+        if (phy && phy->halrelease)
+        {
+            ATCA_STATUS phy_status = phy->halrelease(hal_data);
+
+            if (ATCA_SUCCESS == status)
+            {
+                status = phy_status;
+            }
+        }
     }
 
     return status;
