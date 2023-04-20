@@ -3,19 +3,14 @@
 #define ATCA_CONFIG_H
 
 /* Included HALS */
+#cmakedefine ATCA_HAL_KIT_UART
 #cmakedefine ATCA_HAL_KIT_HID
 #cmakedefine ATCA_HAL_I2C
 #cmakedefine ATCA_HAL_SPI
 #cmakedefine ATCA_HAL_KIT_BRIDGE
 #cmakedefine ATCA_HAL_CUSTOM
-#cmakedefine ATCA_HAL_SWI
+#cmakedefine ATCA_HAL_SWI_UART
 #cmakedefine ATCA_HAL_1WIRE
-
-
-/** Define to enable compatibility with legacy HALs
-   (HALs with embedded device logic)*/
-#cmakedefine ATCA_HAL_LEGACY_API
-
 
 /* Included device support */
 #cmakedefine ATCA_ATSHA204A_SUPPORT
@@ -25,15 +20,26 @@
 #cmakedefine ATCA_ATECC608_SUPPORT
 #cmakedefine ATCA_TA100_SUPPORT
 #cmakedefine ATCA_ECC204_SUPPORT
+#cmakedefine ATCA_TA010_SUPPORT
+#cmakedefine ATCA_SHA104_SUPPORT
+#cmakedefine ATCA_SHA105_SUPPORT
 
 /** Device Override - Library Assumes ATECC608B support in checks */
 #cmakedefine ATCA_ATECC608A_SUPPORT
 
+/** Define to enable compatibility with legacy HALs
+   (HALs with embedded device logic)*/
+#cmakedefine ATCA_HAL_LEGACY_API
 
+/** To use dynamically registered HALs without any of the provided
+implementations its necessary to specify a value here - using this
+in addition to specifying a provide hal may result in compilation
+problems - it will need to be the same as the number of the hal options
+selected plus however additional slots one would like */
+#cmakedefine ATCA_MAX_HAL_CACHE @ATCA_MAX_HAL_CACHE@
 
 /** Define if cryptoauthlib is to use the maximum execution time method */
 #cmakedefine ATCA_NO_POLL
-
 
 /* \brief How long to wait after an initial wake failure for the POST to
  *         complete.
@@ -66,6 +72,13 @@
 #cmakedefine ATCA_OPENSSL
 #cmakedefine ATCA_WOLFSSL
 
+#ifdef ATCA_WOLFSSL
+#cmakedefine WOLFSSL_USER_SETTINGS
+#ifdef WIN32
+#define WIN32_LEAN_AND_MEAN
+#endif
+#endif
+
 /** Additional Runtime Configuration */
 #cmakedefine ATCA_LIBRARY_CONF  "@ATCA_LIBRARY_CONF@"
 
@@ -75,6 +88,11 @@
 /** Define to enable older API forms that have been replaced */
 #cmakedefine ATCA_ENABLE_DEPRECATED
 
+/** Enable Strict ISO/C99 compliance */
+#cmakedefine ATCA_STRICT_C99
+
+/******************** Device Configuration Section *************************/
+
 /** TA100 Specific - Enable auth sessions that require AES (CMAC/GCM) from
    an external library */
 #cmakedefine ATCA_TA100_AES_AUTH_SUPPORT
@@ -82,14 +100,20 @@
 /** TA100 Specific - Enable support for the FCE APIs for the TA100 */
 #cmakedefine ATCA_TA100_FCE_SUPPORT
 
+/** Enable the delete command */
+#cmakedefine01 CALIB_DELETE_EN
+
+
 /******************** Platform Configuration Section ***********************/
 
 /** Define if the library is not to use malloc/free */
 #cmakedefine ATCA_NO_HEAP
 
-/** Define platform malloc/free */
-#cmakedefine ATCA_PLATFORM_MALLOC    @ATCA_PLATFORM_MALLOC@
-#cmakedefine ATCA_PLATFORM_FREE      @ATCA_PLATFORM_FREE@
+/** Define platform provided functions */
+#cmakedefine ATCA_PLATFORM_MALLOC      @ATCA_PLATFORM_MALLOC@
+#cmakedefine ATCA_PLATFORM_FREE        @ATCA_PLATFORM_FREE@
+#cmakedefine ATCA_PLATFORM_STRCASESTR  @ATCA_PLATFORM_STRCASESTR@
+#cmakedefine ATCA_PLATFORM_MEMSET_S    @ATCA_PLATFORM_MEMSET_S@
 
 #define atca_delay_ms   hal_delay_ms
 #define atca_delay_us   hal_delay_us

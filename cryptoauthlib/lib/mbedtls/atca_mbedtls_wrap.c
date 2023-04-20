@@ -62,13 +62,13 @@
 #include "mbedtls/ecdh.h"
 #include "mbedtls/ecp.h"
 #include "mbedtls/entropy.h"
-#include "mbedtls/bignum.h"
 #include "mbedtls/x509_crt.h"
 
 
 /* Cryptoauthlib Includes */
 #include "cryptoauthlib.h"
 #include "atca_mbedtls_wrap.h"
+#include "atca_mbedtls_patch.h"
 
 #include "crypto/atca_crypto_sw.h"
 #if ATCA_CA_SUPPORT
@@ -576,11 +576,11 @@ ATCA_STATUS atcac_sha256_hmac_finish(
  * \return ATCA_SUCCESS on success, otherwise an error code.
  */
 ATCA_STATUS atcac_pk_init(
-    atcac_pk_ctx* ctx,                          /**< [in] pointer to a pk context */
-    uint8_t*      buf,                          /**< [in] buffer containing a pem encoded key */
-    size_t        buflen,                       /**< [in] length of the input buffer */
-    uint8_t       key_type,
-    bool          pubkey                        /**< [in] buffer is a public key */
+    atcac_pk_ctx*   ctx,                    /**< [in] pointer to a pk context */
+    const uint8_t*  buf,                    /**< [in] buffer containing a pem encoded key */
+    size_t          buflen,                 /**< [in] length of the input buffer */
+    uint8_t         key_type,
+    bool            pubkey                  /**< [in] buffer is a public key */
     )
 {
     ATCA_STATUS status = ATCA_BAD_PARAM;
@@ -637,10 +637,10 @@ ATCA_STATUS atcac_pk_init(
  * \return ATCA_SUCCESS on success, otherwise an error code.
  */
 ATCA_STATUS atcac_pk_init_pem(
-    atcac_pk_ctx* ctx,                         /**< [in] pointer to a pk context */
-    uint8_t*      buf,                         /**< [in] buffer containing a pem encoded key */
-    size_t        buflen,                      /**< [in] length of the input buffer */
-    bool          pubkey                       /**< [in] buffer is a public key */
+    atcac_pk_ctx*   ctx,                    /**< [in] pointer to a pk context */
+    const uint8_t*  buf,                    /**< [in] buffer containing a pem encoded key */
+    size_t          buflen,                 /**< [in] length of the input buffer */
+    bool            pubkey                  /**< [in] buffer is a public key */
     )
 {
     ATCA_STATUS status = ATCA_BAD_PARAM;
@@ -724,11 +724,11 @@ ATCA_STATUS atcac_pk_public(
  * \return ATCA_SUCCESS on success, otherwise an error code.
  */
 ATCA_STATUS atcac_pk_sign(
-    atcac_pk_ctx* ctx,
-    uint8_t*      digest,
-    size_t        dig_len,
-    uint8_t*      signature,
-    size_t*       sig_len
+    atcac_pk_ctx*   ctx,
+    const uint8_t*  digest,
+    size_t          dig_len,
+    uint8_t*        signature,
+    size_t*         sig_len
     )
 {
     ATCA_STATUS status = ATCA_BAD_PARAM;
@@ -788,11 +788,11 @@ ATCA_STATUS atcac_pk_sign(
  * \return ATCA_SUCCESS on success, otherwise an error code.
  */
 ATCA_STATUS atcac_pk_verify(
-    atcac_pk_ctx* ctx,
-    uint8_t*      digest,
-    size_t        dig_len,
-    uint8_t*      signature,
-    size_t        sig_len
+    atcac_pk_ctx*   ctx,
+    const uint8_t*  digest,
+    size_t          dig_len,
+    const uint8_t*  signature,
+    size_t          sig_len
     )
 {
     ATCA_STATUS status = ATCA_BAD_PARAM;
@@ -896,7 +896,7 @@ static int atca_mbedtls_eckey_verify(void *ctx, mbedtls_md_type_t md_alg,
                                      const unsigned char *hash, size_t hash_len,
                                      const unsigned char *sig, size_t sig_len)
 {
-#ifdef MBEDTLS_ECDSA_VERIFY_ALT
+#if defined(MBEDTLS_ECDSA_VERIFY_ALT) || !(CALIB_VERIFY_EXTERN_EN || TALIB_VERIFY_EXTERN_EN)
     return mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY)->verify_func(ctx, md_alg, hash, hash_len, sig, sig_len);
 #else
     int ret = -1;

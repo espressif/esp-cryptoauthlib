@@ -1,8 +1,8 @@
 /**
  * \file
- * \brief
+ * \brief Configuration check and defaults for the atcacert module
  *
- * \copyright (c) 2015-2020 Microchip Technology Inc. and its subsidiaries.
+ * \copyright (c) 2015-2022 Microchip Technology Inc. and its subsidiaries.
  *
  * \page License
  *
@@ -24,39 +24,38 @@
  * THE AMOUNT OF FEES, IF ANY, THAT YOU HAVE PAID DIRECTLY TO MICROCHIP FOR
  * THIS SOFTWARE.
  */
+#ifndef ATCACERT_CHECK_CONFIG_H
+#define ATCACERT_CHECK_CONFIG_H
 
+/* The atcacert_ module is only set up to work with classic cryptoauth devices */
+#include "calib/calib_config_check.h"
 
-#ifndef ATCA_CRYPTO_SW_ECDSA_H
-#define ATCA_CRYPTO_SW_ECDSA_H
-
-#include "atca_crypto_sw.h"
-#include <stddef.h>
-#include <stdint.h>
-
-/** \defgroup atcac_ Software crypto methods (atcac_)
- *
- * \brief
- * These methods provide a software implementation of various crypto
- * algorithms
- *
-   @{ */
-
-#define ATCA_ECC_P256_FIELD_SIZE       (256 / 8)
-#define ATCA_ECC_P256_PRIVATE_KEY_SIZE (ATCA_ECC_P256_FIELD_SIZE)
-#define ATCA_ECC_P256_PUBLIC_KEY_SIZE  (ATCA_ECC_P256_FIELD_SIZE * 2)
-#define ATCA_ECC_P256_SIGNATURE_SIZE   (ATCA_ECC_P256_FIELD_SIZE * 2)
-
-#ifdef __cplusplus
-extern "C" {
+#ifndef ATCACERT_COMPCERT_EN
+#define ATCACERT_COMPCERT_EN                CALIB_ECC_SUPPORT
 #endif
 
-int atcac_sw_ecdsa_verify_p256(const uint8_t msg[ATCA_ECC_P256_FIELD_SIZE],
-                               const uint8_t signature[ATCA_ECC_P256_SIGNATURE_SIZE],
-                               const uint8_t public_key[ATCA_ECC_P256_PUBLIC_KEY_SIZE]);
-
-#ifdef __cplusplus
-}
+#ifndef ATCACERT_HW_CHALLENGE_EN
+#define ATCACERT_HW_CHALLENGE_EN            CALIB_RANDOM_EN
 #endif
 
-/** @} */
+#ifndef ATCACERT_HW_VERIFY_EN
+#define ATCACERT_HW_VERIFY_EN               CALIB_VERIFY_EXTERN_EN
 #endif
+
+#ifndef ATCACERT_DATEFMT_ISO_EN
+#define ATCACERT_DATEFMT_ISO_EN             DEFAULT_ENABLED
+#endif
+
+#ifndef ATCACERT_DATEFMT_UTC_EN
+#define ATCACERT_DATEFMT_UTC_EN             DEFAULT_ENABLED
+#endif
+
+#ifndef ATCACERT_DATEFMT_POSIX_EN
+#define ATCACERT_DATEFMT_POSIX_EN           DEFAULT_ENABLED
+#endif
+
+#ifndef ATCACERT_DATEFMT_GEN_EN
+#define ATCACERT_DATEFMT_GEN_EN             DEFAULT_ENABLED
+#endif
+
+#endif /* ATCACERT_CHECK_CONFIG_H */

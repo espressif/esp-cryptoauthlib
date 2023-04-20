@@ -35,6 +35,7 @@
 
 #include "cryptoauthlib.h"
 
+#if CALIB_GENDIG_EN
 /** \brief Issues a GenDig command, which performs a SHA256 hash on the source data indicated by zone with the
  *  contents of TempKey.  See the CryptoAuth datasheet for your chip to see what the values of zone
  *  correspond to.
@@ -90,3 +91,17 @@ ATCA_STATUS calib_gendig(ATCADevice device, uint8_t zone, uint16_t key_id, const
 
     return status;
 }
+#endif /* CALIB_GENDIG_EN */
+
+#if CALIB_GENDIVKEY_EN
+/** \brief Issues a GenDivKey command to generate the equivalent diversified key as that programmed into the SHA104 or
+ *         other client side device
+ *  \param[in] device           Device context pointer
+ *  \param[in] other_data       Must match data used when generating the diversified key in the client device
+ *  \return ATCA_SUCCESS on success, otherwise an error code.
+ */
+ATCA_STATUS calib_sha105_gendivkey(ATCADevice device, const uint8_t *other_data)
+{
+    return calib_gendig(device, GENDIVKEY_MODE, GENDIVKEY_DEFAULT_KEYID, other_data, GENDIVKEY_OTHER_DATA_SIZE);
+}
+#endif

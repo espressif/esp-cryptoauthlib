@@ -26,7 +26,6 @@
  */
 
 #include "cryptoauthlib.h"
-#include "crypto/atca_crypto_sw_rand.h"
 #include "host/atca_host.h"
 
 #include "pkcs11_config.h"
@@ -370,7 +369,12 @@ CK_RV pkcs11_session_login(CK_SESSION_HANDLE hSession, CK_USER_TYPE userType, CK
     bool is_ca_device = atcab_is_ca_device(atcab_get_device_type());
     uint16_t key_len = is_ca_device ? 32 : 16;
     CK_RV rv;
+
+    ((void)userType);
+
+#if ATCA_TA_SUPPORT
     ATCA_STATUS status;
+#endif
 
     if (!pLibCtx || !pLibCtx->initialized)
     {
@@ -398,7 +402,7 @@ CK_RV pkcs11_session_login(CK_SESSION_HANDLE hSession, CK_USER_TYPE userType, CK
         return CKR_USER_ALREADY_LOGGED_IN;
     }
 
-    if (CKR_OK == (rv = pkcs11_lock_context(pLibCtx)))
+    if (CKR_OK == (rv = pkcs11_lock_both(pLibCtx)))
     {
 #ifndef PKCS11_PIN_KDF_ALWAYS
         if (2 * key_len == ulPinLen)
@@ -416,16 +420,21 @@ CK_RV pkcs11_session_login(CK_SESSION_HANDLE hSession, CK_USER_TYPE userType, CK
             }
         }
 
-#if ATCA_TA_SUPPORT
+#if ATCA_TA_SUPPORT && ATCA_HOSTLIB_EN
         if (CKR_OK == rv && atcab_is_ta_device(atcab_get_device_type()))
         {
             uint8_t auth_i_nonce[16];
             uint8_t auth_r_nonce[16];
 
+#if PKCS11_AUTH_TERMINATE_BEFORE_LOGIN
+	    ATCADevice device = atcab_get_device();
+	    device->session_key_id = TA_HANDLE_AUTH_SESSION;
+	    status  = talib_auth_terminate(device);
+#endif
             (void)atcac_sw_random(auth_r_nonce, sizeof(auth_r_nonce));
 
-            status = talib_auth_generate_nonce(_gDevice, 0x4100,
-                                               TA_AUTH_GENERATE_OPT_NONCE_SRC_MASK | TA_AUTH_GENERATE_OPT_RANDOM_MASK, auth_i_nonce);
+            status = talib_auth_generate_nonce(atcab_get_device(), TA_HANDLE_AUTH_SESSION,
+                                            TA_AUTH_GENERATE_OPT_NONCE_SRC_MASK | TA_AUTH_GENERATE_OPT_RANDOM_MASK, auth_i_nonce);
 
             if (CKR_OK == (rv = pkcs11_util_convert_rv(status)))
             {
@@ -436,12 +445,12 @@ CK_RV pkcs11_session_login(CK_SESSION_HANDLE hSession, CK_USER_TYPE userType, CK
 
             if (CKR_OK != rv)
             {
+	        PKCS11_DEBUG(" Login failed: Terminating auth session\r\n");
                 (void)talib_auth_terminate(atcab_get_device());
             }
         }
 #endif
-
-        (void)pkcs11_unlock_context(pLibCtx);
+        (void)pkcs11_unlock_both(pLibCtx);
     }
 
     if (CKR_OK == rv)
@@ -454,6 +463,7 @@ CK_RV pkcs11_session_login(CK_SESSION_HANDLE hSession, CK_USER_TYPE userType, CK
 
 CK_RV pkcs11_session_logout(CK_SESSION_HANDLE hSession)
 {
+    CK_RV rv = CKR_OK;
     pkcs11_lib_ctx_ptr lib_ctx = pkcs11_get_context();
     pkcs11_session_ctx_ptr session_ctx = pkcs11_get_session_context(hSession);
 
@@ -475,16 +485,20 @@ CK_RV pkcs11_session_logout(CK_SESSION_HANDLE hSession)
 #if ATCA_TA_SUPPORT
     if (session_ctx->slot->logged_in && atcab_is_ta_device(atcab_get_device_type()))
     {
-        (void)talib_auth_terminate(atcab_get_device());
+        if (CKR_OK == (rv = pkcs11_lock_both(lib_ctx)))
+        {
+            (void)talib_auth_terminate(atcab_get_device());
+            (void)pkcs11_unlock_both(lib_ctx);
+        }
     }
 #endif
 
-    /* Wipe the io protection secret */
+    /* Wipe the io protection secret regardless if the above operatios succeeded */
     (void)pkcs11_util_memset(session_ctx->slot->read_key, sizeof(session_ctx->slot->read_key), 0, sizeof(session_ctx->slot->read_key));
 
     session_ctx->slot->logged_in = FALSE;
 
-    return CKR_OK;
+    return rv;
 }
 
 #if 0

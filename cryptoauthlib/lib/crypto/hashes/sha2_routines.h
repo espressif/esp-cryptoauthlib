@@ -30,8 +30,13 @@
 
 #include <stdint.h>
 
+#ifndef SHA256_DIGEST_SIZE
 #define SHA256_DIGEST_SIZE (32)
+#endif
+
+#ifndef SHA256_BLOCK_SIZE
 #define SHA256_BLOCK_SIZE  (64)
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -58,4 +63,3 @@ void sw_sha256(const uint8_t * message, unsigned int len, uint8_t digest[SHA256_
 #endif
 
 #endif // SHA2_ROUTINES_H
-

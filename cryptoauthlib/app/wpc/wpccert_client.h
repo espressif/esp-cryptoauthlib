@@ -1,8 +1,8 @@
 /**
  * \file
- * \brief ATCA Hardware abstraction layer for SWI over UART drivers.
+ * \brief Provides api interfaces for accessing WPC certificates from device.
  *
- * \copyright (c) 2015-2020 Microchip Technology Inc. and its subsidiaries.
+ * \copyright (c) 2015-2021 Microchip Technology Inc. and its subsidiaries.
  *
  * \page License
  *
@@ -25,34 +25,34 @@
  * THIS SOFTWARE.
  */
 
-#ifndef HAL_SWI_UART_H_
-#define HAL_SWI_UART_H_
+#ifndef WPCCERT_CLIENT_H
+#define WPCCERT_CLIENT_H
 
-#ifdef ATMEL_START
-    #include "swi_uart_start.h"
-#elif defined (SAMD21_ASF)
-    #include "swi_uart_samd21_asf.h"
-#elif defined (XMEGA_ASF)
-    #include "swi_uart_xmega_a3bu_asf.h"
-#elif defined (AT90USB_ASF)
-    #include "swi_uart_at90usb1287_asf.h"
+#ifdef __cplusplus
+extern "C"
+{
 #endif
 
+#include "cryptoauthlib.h"
+#include "atcacert/atcacert_def.h"
 
-/** \defgroup hal_ Hardware abstraction layer (hal_)
- *
- * \brief
- * These methods define the hardware abstraction layer for communicating with a CryptoAuth device
- * using SWI interface.
- *
-   @{ */
-#define SWI_WAKE_TOKEN   ((uint8_t)0x00)    //!< flag preceding a command
-#define SWI_FLAG_CMD     ((uint8_t)0x77)    //!< flag preceding a command
-#define SWI_FLAG_TX      ((uint8_t)0x88)    //!< flag requesting a response
-#define SWI_FLAG_IDLE    ((uint8_t)0xBB)    //!< flag requesting to go into Idle mode
-#define SWI_FLAG_SLEEP   ((uint8_t)0xCC)    //!< flag requesting to go into Sleep mode
+uint8_t wpccert_get_slots_populated(void);
+uint8_t wpccert_get_slot_count(void);
 
-ATCA_STATUS hal_swi_send_flag(ATCAIface iface, uint8_t flag);
+ATCA_STATUS wpccert_get_slot_info(uint16_t * dig_handle, const atcacert_def_t** def, uint8_t slot);
 
-/** @} */
-#endif /* HAL_SWI_UART_H_ */
+ATCA_STATUS wpccert_read_cert(ATCADevice device, const atcacert_def_t *cert_def, uint8_t *cert, size_t *cert_size);
+
+ATCA_STATUS wpccert_write_cert(ATCADevice device, const atcacert_def_t* cert_def, const uint8_t* cert, size_t cert_size);
+
+ATCA_STATUS wpccert_read_pdu_cert(ATCADevice device, uint8_t* cert, size_t* cert_size, uint8_t slot);
+
+ATCA_STATUS wpccert_read_mfg_cert(ATCADevice device, uint8_t* cert, size_t* cert_size, uint8_t slot);
+
+ATCA_STATUS wpccert_public_key(const atcacert_def_t* cert_def, uint8_t* public_key, uint8_t* cert);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
