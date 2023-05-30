@@ -23,9 +23,8 @@
 #include "cryptoauthlib.h"
 #include "esp_idf_version.h"
 
-
-#define I2C_SDA_PIN                        CONFIG_ATCA_I2C_SDA_PIN
-#define I2C_SCL_PIN                        CONFIG_ATCA_I2C_SCL_PIN
+static uint8_t I2C_SDA_PIN = CONFIG_ATCA_I2C_SDA_PIN;
+static uint8_t I2C_SCL_PIN = CONFIG_ATCA_I2C_SCL_PIN;
 
 #define ACK_CHECK_EN                       0x1  /*!< I2C master will check ack from slave*/
 #define ACK_CHECK_DIS                      0x0  /*!< I2C master will not check ack from slave */
@@ -53,6 +52,12 @@
 #endif // SOC_I2C_NUM >= 2
 
 #endif // !ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
+
+void hal_esp32_i2c_set_pin_config(uint8_t sda_pin, uint8_t scl_pin)
+{
+    I2C_SDA_PIN = sda_pin;
+    I2C_SCL_PIN = scl_pin;
+}
 
 typedef struct atcaI2Cmaster
 {
