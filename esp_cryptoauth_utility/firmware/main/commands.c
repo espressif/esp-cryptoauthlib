@@ -56,7 +56,7 @@ static esp_err_t register_get_tngtls_device_cert();
 static esp_err_t register_provide_cert_def();
 static esp_err_t register_program_device_cert();
 static esp_err_t register_program_signer_cert();
-
+static device_status_t atca_cli_status_object;
 esp_err_t register_command_handler()
 {
     esp_err_t ret = register_init_device();
@@ -77,7 +77,7 @@ static esp_err_t init_device(int argc, char **argv)
 {
     esp_err_t ret = ESP_ERR_INVALID_ARG;
     int err_code;
-    status_object = BEGIN;
+    atca_cli_status_object = BEGIN;
     char device_type[20] = {};
 
     if(argc == 3) {
@@ -88,7 +88,7 @@ static esp_err_t init_device(int argc, char **argv)
     }
 
     ESP_LOGI(TAG, "Status: %s\n", ret ? "Failure" : "Success");
-    status_object = ret ? ATECC_INIT_FAIL : ATECC_INIT_SUCCESS;
+    atca_cli_status_object = ret ? ATECC_INIT_FAIL : ATECC_INIT_SUCCESS;
 
     if (ret == ESP_ERR_INVALID_ARG) {
         ESP_LOGE(TAG, "Reason: Invalid Usage");
@@ -119,11 +119,11 @@ static esp_err_t print_chip_info(int argc, char **argv)
     esp_err_t ret = ESP_ERR_INVALID_ARG;
     int err_code;
     uint8_t sn[9] = {};
-    if (status_object >= ATECC_INIT_SUCCESS) {
+    if (atca_cli_status_object >= ATECC_INIT_SUCCESS) {
         ret = atecc_print_info(sn, &err_code);
         ESP_LOGI(TAG, "Status: %s\n", ret ? "Failure" : "Success");
     }
-    if (status_object < ATECC_INIT_SUCCESS) {
+    if (atca_cli_status_object < ATECC_INIT_SUCCESS) {
         ESP_LOGE(TAG, "Please Initialize device before calling this function");
     } else if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Error in generating keys, returned %02x", err_code);
@@ -154,15 +154,15 @@ static esp_err_t generate_key_pair(int argc, char **argv)
 {
     esp_err_t ret = ESP_ERR_INVALID_ARG;
     int err_code;
-    if (status_object >= ATECC_INIT_SUCCESS) {
+    if (atca_cli_status_object >= ATECC_INIT_SUCCESS) {
         if (argc == 2 && (atoi(argv[1]) < 3)) {
             ret = atecc_keygen(atoi(argv[1]), crypt_buf_public_key, CRYPT_BUF_PUB_KEY_LEN, &err_code);
         }
         ESP_LOGI(TAG, "Status: %s\n", ret ? "Failure" : "Success");
-        status_object = ret ? KEY_PAIR_GEN_FAIL : KEY_PAIR_GEN_SUCCESS;
+        atca_cli_status_object = ret ? KEY_PAIR_GEN_FAIL : KEY_PAIR_GEN_SUCCESS;
     }
 
-    if (status_object < ATECC_INIT_SUCCESS) {
+    if (atca_cli_status_object < ATECC_INIT_SUCCESS) {
         ESP_LOGE(TAG, "Please Initialize device before calling this function");
     } else if (ret == ESP_ERR_INVALID_ARG) {
         ESP_LOGE(TAG, "Reason: Invalid Usage");
@@ -196,15 +196,15 @@ static esp_err_t generate_csr(int argc, char **argv)
 {
     esp_err_t ret = ESP_ERR_INVALID_ARG;
     int err_code;
-    if (status_object >= ATECC_INIT_SUCCESS) {
+    if (atca_cli_status_object >= ATECC_INIT_SUCCESS) {
         if (argc == 1) {
             ret = atecc_csr_gen(crypt_buf_csr, CRYPT_BUF_LEN, &err_code);
         }
         ESP_LOGI(TAG, "Status: %s\n", ret ? "Failure" : "Success");
-        status_object = ret ? CSR_GEN_FAIL : CSR_GEN_SUCCESS;
+        atca_cli_status_object = ret ? CSR_GEN_FAIL : CSR_GEN_SUCCESS;
     }
 
-    if (status_object < ATECC_INIT_SUCCESS) {
+    if (atca_cli_status_object < ATECC_INIT_SUCCESS) {
         ESP_LOGE(TAG, "Please Initialize device before calling this function");
     } else if (ret == ESP_ERR_INVALID_ARG) {
         ESP_LOGE(TAG, "Reason: Invalid Usage");
@@ -238,15 +238,15 @@ static esp_err_t generate_pub_key(int argc, char **argv)
 {
     esp_err_t ret = ESP_ERR_INVALID_ARG;
     int err_code;
-    if (status_object >= ATECC_INIT_SUCCESS) {
+    if (atca_cli_status_object >= ATECC_INIT_SUCCESS) {
         if (argc == 2) {
             ret = atecc_gen_pubkey(atoi(argv[1]), crypt_buf_public_key, CRYPT_BUF_PUB_KEY_LEN, &err_code);
         }
         ESP_LOGI(TAG, "Status: %s\n", ret ? "Failure" : "Success");
-        status_object = ret ? PUBKEY_GEN_FAIL : PUBKEY_GEN_SUCCESS;
+        atca_cli_status_object = ret ? PUBKEY_GEN_FAIL : PUBKEY_GEN_SUCCESS;
     }
 
-    if (status_object < ATECC_INIT_SUCCESS) {
+    if (atca_cli_status_object < ATECC_INIT_SUCCESS) {
         ESP_LOGE(TAG, "Please Initialize device before calling this function");
     } else if (ret == ESP_ERR_INVALID_ARG) {
         ESP_LOGE(TAG, "Reason: Invalid Usage");
@@ -279,7 +279,7 @@ static esp_err_t register_generate_pub_key()
 static esp_err_t provide_cert_def(int argc, char **argv)
 {
     int ret = -1;
-    if (status_object >= ATECC_INIT_SUCCESS) {
+    if (atca_cli_status_object >= ATECC_INIT_SUCCESS) {
         if (argc == 2) {
             if (atoi(argv[1]) == 0) {
                 ret = get_cert_def(crypt_buf_cert, CRYPT_BUF_LEN, CERT_TYPE_DEVICE);
@@ -288,10 +288,10 @@ static esp_err_t provide_cert_def(int argc, char **argv)
             }
         }
         ESP_LOGI(TAG, "Status: %s\n", ret ? "Failure" : "Success");
-        status_object = ret ?  GET_CERT_DEF_SUCCESS : GET_CERT_DEF_FAIL;
+        atca_cli_status_object = ret ?  GET_CERT_DEF_SUCCESS : GET_CERT_DEF_FAIL;
     }
 
-    if (status_object < ATECC_INIT_SUCCESS) {
+    if (atca_cli_status_object < ATECC_INIT_SUCCESS) {
         ESP_LOGE(TAG, "Please Initialize device before calling this function");
     } else if (ret == ESP_ERR_INVALID_ARG) {
         ESP_LOGE(TAG, "Reason: Invalid Usage");
@@ -318,15 +318,15 @@ static esp_err_t program_device_cert(int argc, char **argv)
 {
     esp_err_t ret = ESP_ERR_INVALID_ARG;
     int err_code;
-    if (status_object >= CSR_GEN_SUCCESS) {
+    if (atca_cli_status_object >= CSR_GEN_SUCCESS) {
         if (argc == 1) {
             ret = atecc_input_cert(crypt_buf_cert, CRYPT_BUF_LEN, CERT_TYPE_DEVICE, &err_code);
         }
 
         ESP_LOGI(TAG, "Status: %s\n", ret ? "Failure" : "Success");
-        status_object = ret ? PROGRAM_CERT_FAIL : PROGRAM_CERT_SUCCESS;
+        atca_cli_status_object = ret ? PROGRAM_CERT_FAIL : PROGRAM_CERT_SUCCESS;
     }
-    if (status_object < CSR_GEN_SUCCESS) {
+    if (atca_cli_status_object < CSR_GEN_SUCCESS) {
         ESP_LOGE(TAG, "Generate the CSR before calling this function.");
     } else if (ret == ESP_ERR_INVALID_ARG) {
         ESP_LOGE(TAG, "Reason: Invalid Usage");
@@ -353,15 +353,15 @@ static esp_err_t program_signer_cert(int argc, char **argv)
 {
     esp_err_t ret = ESP_ERR_INVALID_ARG;
     int err_code;
-    if (status_object >= CSR_GEN_SUCCESS) {
+    if (atca_cli_status_object >= CSR_GEN_SUCCESS) {
         if (argc == 1) {
             ret = atecc_input_cert(crypt_buf_cert, CRYPT_BUF_LEN, CERT_TYPE_SIGNER, &err_code);
         }
 
         ESP_LOGI(TAG, "Status: %s\n", ret ? "Failure" : "Success");
-        status_object = ret ? PROGRAM_CERT_FAIL : PROGRAM_CERT_SUCCESS;
+        atca_cli_status_object = ret ? PROGRAM_CERT_FAIL : PROGRAM_CERT_SUCCESS;
     }
-    if (status_object < CSR_GEN_SUCCESS) {
+    if (atca_cli_status_object < CSR_GEN_SUCCESS) {
         ESP_LOGE(TAG, "Generate the CSR before calling this function.");
     } else if (ret == ESP_ERR_INVALID_ARG) {
         ESP_LOGE(TAG, "Reason: Invalid Usage");
@@ -390,14 +390,14 @@ static esp_err_t get_tngtls_root_cert(int argc, char **argv)
     esp_err_t ret = ESP_ERR_INVALID_ARG;
     int err_code;
     size_t cert_size = CRYPT_BUF_LEN;
-    if (status_object >= ATECC_INIT_SUCCESS) {
+    if (atca_cli_status_object >= ATECC_INIT_SUCCESS) {
         if (argc == 1) {
             ret = atecc_get_tngtls_root_cert(crypt_buf_cert, &cert_size, &err_code);
         }
         ESP_LOGI(TAG, "Status: %s\n", ret ? "Failure" : "Success");
-        status_object = ret ? TNGTLS_ROOT_CERT_FAIL : TNGTLS_ROOT_CERT_SUCCESS;
+        atca_cli_status_object = ret ? TNGTLS_ROOT_CERT_FAIL : TNGTLS_ROOT_CERT_SUCCESS;
     }
-    if (status_object < ATECC_INIT_SUCCESS) {
+    if (atca_cli_status_object < ATECC_INIT_SUCCESS) {
         ESP_LOGE(TAG, "Please Initialize device before calling this function");
     } else if (ret == ESP_ERR_INVALID_ARG) {
         ESP_LOGE(TAG, "Reason: Invalid Usage");
@@ -433,14 +433,14 @@ static esp_err_t get_tngtls_signer_cert(int argc, char **argv)
     esp_err_t ret = ESP_ERR_INVALID_ARG;
     int err_code;
     size_t cert_size = CRYPT_BUF_LEN;
-    if (status_object >= ATECC_INIT_SUCCESS) {
+    if (atca_cli_status_object >= ATECC_INIT_SUCCESS) {
         if (argc == 1) {
             ret = atecc_get_tngtls_signer_cert(crypt_buf_cert, &cert_size, &err_code);
         }
         ESP_LOGI(TAG, "Status: %s\n", ret ? "Failure" : "Success");
-        status_object = ret ? TNGTLS_SIGNER_CERT_FAIL : TNGTLS_SIGNER_CERT_SUCCESS;
+        atca_cli_status_object = ret ? TNGTLS_SIGNER_CERT_FAIL : TNGTLS_SIGNER_CERT_SUCCESS;
     }
-    if (status_object < ATECC_INIT_SUCCESS) {
+    if (atca_cli_status_object < ATECC_INIT_SUCCESS) {
         ESP_LOGE(TAG, "Please Initialize device before calling this function");
     } else if (ret == ESP_ERR_INVALID_ARG) {
         ESP_LOGE(TAG, "Reason: Invalid Usage");
@@ -476,16 +476,16 @@ static esp_err_t get_tngtls_device_cert(int argc, char **argv)
     esp_err_t ret = ESP_ERR_INVALID_ARG;
     int err_code;
     size_t cert_size = CRYPT_BUF_LEN;
-    if (status_object >= TNGTLS_SIGNER_CERT_SUCCESS) {
+    if (atca_cli_status_object >= TNGTLS_SIGNER_CERT_SUCCESS) {
         if (argc == 1) {
             ret = atecc_get_tngtls_device_cert(crypt_buf_cert, &cert_size, &err_code);
         }
         ESP_LOGI(TAG, "Status: %s\n", ret ? "Failure" : "Success");
-        status_object = ret ? TNGTLS_DEVICE_CERT_FAIL : TNGTLS_DEVICE_CERT_SUCCESS;
+        atca_cli_status_object = ret ? TNGTLS_DEVICE_CERT_FAIL : TNGTLS_DEVICE_CERT_SUCCESS;
     }
-    if (status_object < ATECC_INIT_SUCCESS) {
+    if (atca_cli_status_object < ATECC_INIT_SUCCESS) {
         ESP_LOGE(TAG, "Please Initialize device before calling this function");
-    } else if (status_object < TNGTLS_SIGNER_CERT_SUCCESS) {
+    } else if (atca_cli_status_object < TNGTLS_SIGNER_CERT_SUCCESS) {
         ESP_LOGE(TAG, "Please execute get-tngtls-signer-cert command as this command requires signer cert");
     } else if (ret == ESP_ERR_INVALID_ARG) {
         ESP_LOGE(TAG, "Reason: Invalid Usage");

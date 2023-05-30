@@ -27,7 +27,7 @@
 #include "esp_err.h"
 #include "esp_partition.h"
 #include "esp_flash_partitions.h"
-#include "esp_spi_flash.h"
+#include "spi_flash_mmap.h"
 #include "driver/uart.h"
 
 #include "handlers.h"
@@ -40,7 +40,6 @@
 #include "atcacert/atcacert_client.h"
 #include "atcacert/atcacert_pem.h"
 #include "tng_atcacert_client.h"
-#include "hal_esp32_i2c.h"
 
 #include "mbedtls/atca_mbedtls_wrap.h"
 
@@ -110,13 +109,15 @@ int convert_pem_to_der( const unsigned char *input, size_t ilen,
     return ( 0 );
 }
 
+extern void hal_esp32_i2c_set_pin_config(uint8_t i2c_sda_pin, uint8_t i2c_scl_pin);
+
 esp_err_t init_atecc608a(char *device_type, uint8_t i2c_sda_pin, uint8_t i2c_scl_pin, int *err_ret)
 {
     int ret = 0;
     bool is_zone_locked = false;
     ECU_DEBUG_LOG(TAG, "initialize the ATECC interface...");
     sprintf(device_type, "%s", "TrustCustom");
-    hal_esp32_i2c0_set_pin_config(i2c_sda_pin,i2c_scl_pin);
+    hal_esp32_i2c_set_pin_config(i2c_sda_pin,i2c_scl_pin);
     ESP_LOGI(TAG, "debug - I2C pins selected are SDA = %d, SCL = %d", i2c_sda_pin, i2c_scl_pin);
 
     if (ATCA_SUCCESS != (ret = atcab_init(&cfg_ateccx08a_i2c_default))) {

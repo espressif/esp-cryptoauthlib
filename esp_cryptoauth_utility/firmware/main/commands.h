@@ -21,7 +21,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-enum device_status {
+typedef enum device_status {
     BEGIN = 0,
     ATECC_INIT_FAIL,
     ATECC_INIT_SUCCESS,
@@ -42,7 +42,7 @@ enum device_status {
     TNGTLS_SIGNER_CERT_SUCCESS,
     TNGTLS_DEVICE_CERT_FAIL,
     TNGTLS_DEVICE_CERT_SUCCESS,
-} status_object;
+} device_status_t;
 
 esp_err_t register_command_handler();
 #ifdef __cplusplus
