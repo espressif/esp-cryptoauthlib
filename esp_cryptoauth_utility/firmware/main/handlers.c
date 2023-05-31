@@ -111,36 +111,47 @@ int convert_pem_to_der( const unsigned char *input, size_t ilen,
 
 extern void hal_esp32_i2c_set_pin_config(uint8_t i2c_sda_pin, uint8_t i2c_scl_pin);
 
+esp_err_t init_atecc608_device(char *device_type)
+{   int ret = 0;
+
+    cfg_ateccx08a_i2c_default.atcai2c.address = 0xC0;
+    ret = atcab_init(&cfg_ateccx08a_i2c_default);
+    if (ret == ATCA_SUCCESS) {
+        ESP_LOGI(TAG, "Device is of type TrustCustom");
+        sprintf(device_type, "%s", "TrustCustom");
+        return ESP_OK;
+    }
+
+    cfg_ateccx08a_i2c_default.atcai2c.address = 0x6A;
+    ret = atcab_init(&cfg_ateccx08a_i2c_default);
+    if (ret == ATCA_SUCCESS) {
+        ESP_LOGI(TAG, "Device is of type TrustnGo");
+        sprintf(device_type, "%s", "Trust&Go");
+        return ESP_OK;
+    }
+
+    cfg_ateccx08a_i2c_default.atcai2c.address = 0x6C;
+    ret = atcab_init(&cfg_ateccx08a_i2c_default);
+    if (ret == ATCA_SUCCESS) {
+        ESP_LOGI(TAG, "Device is of type TrusFlex");
+        sprintf(device_type, "%s", "TrustFlex");
+        return ESP_OK;
+    }
+
+    return ESP_FAIL;
+}
+
 esp_err_t init_atecc608a(char *device_type, uint8_t i2c_sda_pin, uint8_t i2c_scl_pin, int *err_ret)
 {
     int ret = 0;
     bool is_zone_locked = false;
-    ECU_DEBUG_LOG(TAG, "initialize the ATECC interface...");
-    sprintf(device_type, "%s", "TrustCustom");
+    ECU_DEBUG_LOG(TAG, "Initialize the ATECC interface...");
     hal_esp32_i2c_set_pin_config(i2c_sda_pin,i2c_scl_pin);
-    ESP_LOGI(TAG, "debug - I2C pins selected are SDA = %d, SCL = %d", i2c_sda_pin, i2c_scl_pin);
+    ESP_LOGI(TAG, "I2C pins selected are SDA = %d, SCL = %d", i2c_sda_pin, i2c_scl_pin);
 
-    if (ATCA_SUCCESS != (ret = atcab_init(&cfg_ateccx08a_i2c_default))) {
-        sprintf(device_type, "%s", "Trust&Go");
-        /* Checking if the ATECC608 is of type Trust & GO */
-        cfg_ateccx08a_i2c_default.atcai2c.address = 0x6A;
-        printf("\nnot trustngo\n");
-        if (ATCA_SUCCESS != (ret = atcab_init(&cfg_ateccx08a_i2c_default))) {
-            sprintf(device_type, "%s", "TrustFlex");
-            /* Checking if the ATECC608 is of type TrustFlex */
-            cfg_ateccx08a_i2c_default.atcai2c.address = 0x6C;
-            printf("\nnot trustflex\n");
-
-            if (ATCA_SUCCESS != (ret = atcab_init(&cfg_ateccx08a_i2c_default))) {
-                ESP_LOGE(TAG, " failed\n  ! atcab_init returned %02x", ret);
-                goto exit;
-            }
-
-        }
-
-    } else {
-        ESP_LOGE(TAG, " failed\n  ! atcab_init returned %02x", ret);
-        goto exit;
+    esp_err_t esp_ret = init_atecc608_device(device_type);
+    if (esp_ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize atca device");
     }
 
     ECU_DEBUG_LOG(TAG, "\t\t OK");
