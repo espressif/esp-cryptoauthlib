@@ -24,19 +24,19 @@ try:
     from setuptools import find_packages, setup
 except ImportError:
     print(
-        "Package setuptools is missing from your Python installation. "
-        "Please see the installation section in the esp-cryptoauth-utillity documentation"
-        " for instructions on how to install it."
+        'Package setuptools is missing from your Python installation. '
+        'Please see the installation section in the esp-cryptoauth-utillity documentation'
+        ' for instructions on how to install it.'
     )
     exit(1)
 
-VERSION = "0.9.1"
+VERSION = '0.10.0'
 
 long_description = """
 ======================
 esp-cryptoauth-utility
 ======================
-The python utility helps to configure and provision ATECC608 chip connected to ESP32 module. 
+The python utility helps to configure and provision ATECC608 chip connected to an ESP module. Currently the utility is supported for ESP32, ESP32S3, ESP32C3.
 
 The esp-cryptoauth-utility is `hosted on github <https://github.com/espressif/esp-cryptoauthlib/tree/master/esp_cryptoauth_utility>`_.
 
@@ -51,34 +51,34 @@ The License for the project can be found `here <https://github.com/espressif/esp
 """
 
 setup(
-    name="esp-cryptoauth-utility",
+    name='esp-cryptoauth-utility',
     version=VERSION,
-    description="A python utility which helps to configure and provision ATECC608 chip connected to ESP32 module",
+    description='A python utility which helps to configure and provision ATECC608 chip connected to an ESP module',
     long_description=long_description,
     long_description_content_type='text/x-rst',
-    url="https://github.com/espressif/esp-cryptoauthlib/tree/master/esp_cryptoauth_utility",
+    url='https://github.com/espressif/esp-cryptoauthlib/tree/master/esp_cryptoauth_utility',
     project_urls={
-        "Documentation": "https://github.com/espressif/esp-cryptoauthlib/tree/master/esp_cryptoauth_utility#readme",
-        "Source": "https://github.com/espressif/esp-cryptoauthlib/tree/master/esp_cryptoauth_utility",
+        'Documentation': 'https://github.com/espressif/esp-cryptoauthlib/tree/master/esp_cryptoauth_utility#readme',
+        'Source': 'https://github.com/espressif/esp-cryptoauthlib/tree/master/esp_cryptoauth_utility',
     },
-    author="Espressif Systems",
-    author_email="",
+    author='Espressif Systems',
+    author_email='',
     classifiers=[
-        "Intended Audience :: Developers",
-        "Natural Language :: English",
-        "Operating System :: POSIX",
-        "Operating System :: Microsoft :: Windows",
-        "Operating System :: MacOS :: MacOS X",
-        "Topic :: Software Development :: Embedded Systems",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
+        'Intended Audience :: Developers',
+        'Natural Language :: English',
+        'Operating System :: POSIX',
+        'Operating System :: Microsoft :: Windows',
+        'Operating System :: MacOS :: MacOS X',
+        'Topic :: Software Development :: Embedded Systems',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
     ],
-    python_requires=">=3.7",
-    setup_requires=(["wheel"] if "bdist_wheel" in sys.argv else []),
+    python_requires='>=3.7',
+    setup_requires=(['wheel'] if 'bdist_wheel' in sys.argv else []),
     install_requires=get_install_requires(),
     include_package_data = True,
     packages=find_packages(),
-    scripts=["secure_cert_mfg.py"],
+    scripts=['secure_cert_mfg.py'],
 )
