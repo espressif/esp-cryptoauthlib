@@ -21,20 +21,13 @@
 
 #include <string.h>
 #include "stdio.h"
-#include "mbedtls/config.h"
-#include "mbedtls/platform.h"
-#include "mbedtls/pk.h"
-#include "mbedtls/rsa.h"
-#include "mbedtls/entropy.h"
-#include "mbedtls/ctr_drbg.h"
-#include "mbedtls/x509_csr.h"
 #include "mbedtls/base64.h"
 
 #include "esp_log.h"
 #include "esp_err.h"
 #include "esp_partition.h"
 #include "esp_flash_partitions.h"
-#include "esp_spi_flash.h"
+#include "spi_flash_mmap.h"
 #include "driver/uart.h"
 
 #include "handlers.h"
@@ -47,11 +40,8 @@
 #include "atcacert/atcacert_client.h"
 #include "atcacert/atcacert_pem.h"
 #include "tng_atcacert_client.h"
-#include "hal_esp32_i2c.h"
 
 #include "mbedtls/atca_mbedtls_wrap.h"
-#include "mbedtls/debug.h"
-#include "mbedtls/ssl.h"
 
 static const char *TAG = "secure_element";
 static bool is_atcab_init = false;
@@ -119,36 +109,49 @@ int convert_pem_to_der( const unsigned char *input, size_t ilen,
     return ( 0 );
 }
 
+extern void hal_esp32_i2c_set_pin_config(uint8_t i2c_sda_pin, uint8_t i2c_scl_pin);
+
+esp_err_t init_atecc608_device(char *device_type)
+{   int ret = 0;
+
+    cfg_ateccx08a_i2c_default.atcai2c.address = 0xC0;
+    ret = atcab_init(&cfg_ateccx08a_i2c_default);
+    if (ret == ATCA_SUCCESS) {
+        ESP_LOGI(TAG, "Device is of type TrustCustom");
+        sprintf(device_type, "%s", "TrustCustom");
+        return ESP_OK;
+    }
+
+    cfg_ateccx08a_i2c_default.atcai2c.address = 0x6A;
+    ret = atcab_init(&cfg_ateccx08a_i2c_default);
+    if (ret == ATCA_SUCCESS) {
+        ESP_LOGI(TAG, "Device is of type TrustnGo");
+        sprintf(device_type, "%s", "Trust&Go");
+        return ESP_OK;
+    }
+
+    cfg_ateccx08a_i2c_default.atcai2c.address = 0x6C;
+    ret = atcab_init(&cfg_ateccx08a_i2c_default);
+    if (ret == ATCA_SUCCESS) {
+        ESP_LOGI(TAG, "Device is of type TrusFlex");
+        sprintf(device_type, "%s", "TrustFlex");
+        return ESP_OK;
+    }
+
+    return ESP_FAIL;
+}
+
 esp_err_t init_atecc608a(char *device_type, uint8_t i2c_sda_pin, uint8_t i2c_scl_pin, int *err_ret)
 {
     int ret = 0;
     bool is_zone_locked = false;
-    ECU_DEBUG_LOG(TAG, "initialize the ATECC interface...");
-    sprintf(device_type, "%s", "TrustCustom");
-    hal_esp32_i2c0_set_pin_config(i2c_sda_pin,i2c_scl_pin);
-    ESP_LOGI(TAG, "debug - I2C pins selected are SDA = %d, SCL = %d", i2c_sda_pin, i2c_scl_pin);
+    ECU_DEBUG_LOG(TAG, "Initialize the ATECC interface...");
+    hal_esp32_i2c_set_pin_config(i2c_sda_pin,i2c_scl_pin);
+    ESP_LOGI(TAG, "I2C pins selected are SDA = %d, SCL = %d", i2c_sda_pin, i2c_scl_pin);
 
-    if (ATCA_SUCCESS != (ret = atcab_init(&cfg_ateccx08a_i2c_default))) {
-        sprintf(device_type, "%s", "Trust&Go");
-        /* Checking if the ATECC608 is of type Trust & GO */
-        cfg_ateccx08a_i2c_default.atcai2c.address = 0x6A;
-        printf("\nnot trustngo\n");
-        if (ATCA_SUCCESS != (ret = atcab_init(&cfg_ateccx08a_i2c_default))) {
-            sprintf(device_type, "%s", "TrustFlex");
-            /* Checking if the ATECC608 is of type TrustFlex */
-            cfg_ateccx08a_i2c_default.atcai2c.address = 0x6C;
-            printf("\nnot trustflex\n");
-
-            if (ATCA_SUCCESS != (ret = atcab_init(&cfg_ateccx08a_i2c_default))) {
-                ESP_LOGE(TAG, " failed\n  ! atcab_init returned %02x", ret);
-                goto exit;
-            }
-
-        }
-
-    } else {
-        ESP_LOGE(TAG, " failed\n  ! atcab_init returned %02x", ret);
-        goto exit;
+    esp_err_t esp_ret = init_atecc608_device(device_type);
+    if (esp_ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize atca device");
     }
 
     ECU_DEBUG_LOG(TAG, "\t\t OK");
@@ -333,7 +336,7 @@ esp_err_t get_cert_def(unsigned char *cert_def_array, size_t data_len, cert_type
 
     memset(cert_def_array, 0xff, data_len);
     do {
-        ret = xQueueReceive(uart_queue, (void * )&event, (portTickType) portMAX_DELAY);
+        ret = xQueueReceive(uart_queue, (void * )&event, (TickType_t) portMAX_DELAY);
         if (ret != pdPASS) {
             continue;
         }
@@ -416,7 +419,7 @@ esp_err_t atecc_input_cert(unsigned char *cert_buf, size_t cert_len, cert_type_t
 
     memset(cert_buf, 0xff, cert_len);
     do {
-        ret = xQueueReceive(uart_queue, (void * )&event, (portTickType) portMAX_DELAY);
+        ret = xQueueReceive(uart_queue, (void * )&event, (TickType_t) portMAX_DELAY);
         if (ret != pdPASS) {
             continue;
         }

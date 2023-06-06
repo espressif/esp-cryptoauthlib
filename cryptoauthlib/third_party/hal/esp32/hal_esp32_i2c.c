@@ -19,9 +19,10 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "cryptoauthlib.h"
+#include "soc/soc_caps.h"
 
-static uint8_t I2C0_SDA_PIN = CONFIG_ATCA_I2C_SDA_PIN;
-static uint8_t I2C0_SCL_PIN = CONFIG_ATCA_I2C_SCL_PIN;
+static uint8_t I2C_SDA_PIN = CONFIG_ATCA_I2C_SDA_PIN;
+static uint8_t I2C_SCL_PIN = CONFIG_ATCA_I2C_SCL_PIN;
 
 #define ACK_CHECK_EN                       0x1              /*!< I2C master will check ack from slave*/
 #define ACK_CHECK_DIS                      0x0              /*!< I2C master will not check ack from slave */
@@ -34,10 +35,10 @@ static uint8_t I2C0_SCL_PIN = CONFIG_ATCA_I2C_SCL_PIN;
 
 #define MAX_I2C_BUSES 2  //ESP32 has 2 I2C bus
 
-void hal_esp32_i2c0_set_pin_config(uint8_t sda_pin, uint8_t scl_pin)
+void hal_esp32_i2c_set_pin_config(uint8_t sda_pin, uint8_t scl_pin)
 {
-    I2C0_SDA_PIN = sda_pin;
-    I2C0_SCL_PIN = scl_pin;
+    I2C_SDA_PIN = sda_pin;
+    I2C_SCL_PIN = scl_pin;
 }
 
 typedef struct atcaI2Cmaster
@@ -114,9 +115,12 @@ ATCA_STATUS hal_i2c_init(ATCAIface iface, ATCAIfaceCfg *cfg)
             case 0:
                 i2c_hal_data[bus].id = I2C_NUM_0;
                 break;
+#if SOC_I2C_NUM >= 2
             case 1:
                 i2c_hal_data[bus].id = I2C_NUM_1;
                 break;
+#endif /* SOC_I2C_NUM >= 2 */
+
             default:
                 break;
             }

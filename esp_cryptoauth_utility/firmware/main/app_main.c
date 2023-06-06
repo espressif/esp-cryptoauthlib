@@ -62,7 +62,7 @@ static void scli_loop()
         bzero(linebuf, sizeof(linebuf));
         i = 0;
         do {
-            ret = xQueueReceive(uart_queue, (void * )&event, (portTickType)portMAX_DELAY);
+            ret = xQueueReceive(uart_queue, (void * )&event, (TickType_t)portMAX_DELAY);
             if (ret != pdPASS) {
                 continue;
             }
