@@ -104,8 +104,19 @@ def main():
         dest='nva_years',
         default=40,type=int,
         help='number of years for which device cert is valid (from current year), efault = 40')
+
+    parser.add_argument(
+        '--lock_slots',
+        dest='lock_slots',
+        default=False,action='store_true',
+        help='Whether to lock the device and signer certificate slot for ATECC TrustCustom '
+             '\nSlots shall be permenantly locked if set to true')
     args = parser.parse_args()
     baudrate = 576000
+
+    if args.target_chip == 'esp32':
+        baudrate = 230400
+
     binary_stub_path = get_binary_stub_path(args.target_chip)
     print(binary_stub_path)
     hs.serial.load_app_stub(args.port, baudrate, binary_stub_path)
@@ -184,13 +195,18 @@ def provision_trustcustom_device(args, init_mfg):
 
     # get the cert definition and template data in string format
     print('program device cert')
+    slot_lock = 0
+
+    if (args.lock_slots):
+        slot_lock = 1
+
     cert_def_str = hs.cert2certdef.esp_create_cert_def_str(cert_der, 'DEVICE_CERT')
 
     retval = init_mfg.exec_cmd(args.port, 'provide-cert-def 0', cert_def_str)
     hs.serial.esp_cmd_check_ok(retval, 'program-device-cert-def')
 
-    retval = init_mfg.exec_cmd(args.port, 'program-dev-cert', device_cert)
-    hs.serial.esp_cmd_check_ok(retval, 'program-dev-cert')
+    retval = init_mfg.exec_cmd(args.port, f'program-dev-cert {slot_lock}', device_cert)
+    hs.serial.esp_cmd_check_ok(retval, f'program-dev-cert {slot_lock} ')
     print(retval[1]['Return'])
 
     signer_cert_data = esp_handle_file(args.signer_cert, 'read')
@@ -204,8 +220,8 @@ def provision_trustcustom_device(args, init_mfg):
     retval = init_mfg.exec_cmd(args.port, 'provide-cert-def 1', cert_def_str)
     hs.serial.esp_cmd_check_ok(retval, 'program-signer-cert-def')
 
-    retval = init_mfg.exec_cmd(args.port, 'program-signer-cert', signer_cert_data)
-    hs.serial.esp_cmd_check_ok(retval, 'program-signer-cert')
+    retval = init_mfg.exec_cmd(args.port, f'program-signer-cert {slot_lock}', signer_cert_data)
+    hs.serial.esp_cmd_check_ok(retval, f'program-signer-cert {slot_lock} ')
 
 
 def esp_handle_file(file_name, operation, data=None):
