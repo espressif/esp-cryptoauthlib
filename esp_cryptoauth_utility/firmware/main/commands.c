@@ -319,8 +319,14 @@ static esp_err_t program_device_cert(int argc, char **argv)
     esp_err_t ret = ESP_ERR_INVALID_ARG;
     int err_code;
     if (atca_cli_status_object >= CSR_GEN_SUCCESS) {
-        if (argc == 1) {
-            ret = atecc_input_cert(crypt_buf_cert, CRYPT_BUF_LEN, CERT_TYPE_DEVICE, &err_code);
+        if (argc == 1 || argc == 2) {
+            bool lock = false;
+            if (argc == 2) {
+                if (atoi(argv[1]) == 1) {
+                    lock = true;
+                }
+            }
+            ret = atecc_input_cert(crypt_buf_cert, CRYPT_BUF_LEN, CERT_TYPE_DEVICE, lock, &err_code);
         }
 
         ESP_LOGI(TAG, "Status: %s\n", ret ? "Failure" : "Success");
@@ -343,7 +349,7 @@ static esp_err_t register_program_device_cert()
     const esp_console_cmd_t cmd = {
         .command = "program-dev-cert",
         .help = "Sets the UART command handler to input the device certificate.\n"
-        "  Usage:program-dev-cert\n",
+        "  Usage:program-dev-cert lock\n",
         .func = &program_device_cert,
     };
     return esp_console_cmd_register(&cmd);
@@ -354,8 +360,14 @@ static esp_err_t program_signer_cert(int argc, char **argv)
     esp_err_t ret = ESP_ERR_INVALID_ARG;
     int err_code;
     if (atca_cli_status_object >= CSR_GEN_SUCCESS) {
-        if (argc == 1) {
-            ret = atecc_input_cert(crypt_buf_cert, CRYPT_BUF_LEN, CERT_TYPE_SIGNER, &err_code);
+        if (argc == 1 || argc == 2) {
+            bool lock = false;
+            if (argc == 2) {
+                if (atoi(argv[1]) == 1) {
+                    lock = true;
+                }
+            }
+            ret = atecc_input_cert(crypt_buf_cert, CRYPT_BUF_LEN, CERT_TYPE_SIGNER, lock, &err_code);
         }
 
         ESP_LOGI(TAG, "Status: %s\n", ret ? "Failure" : "Success");
@@ -379,7 +391,7 @@ static esp_err_t register_program_signer_cert()
     const esp_console_cmd_t cmd = {
         .command = "program-signer-cert",
         .help = "Sets the UART command handler to input the signer certificate.\n"
-        "  Usage:program-signer-cert\n",
+        "  Usage:program-signer-cert lock\n",
         .func = &program_signer_cert,
     };
     return esp_console_cmd_register(&cmd);
@@ -515,4 +527,3 @@ static esp_err_t register_get_tngtls_device_cert()
     };
     return esp_console_cmd_register(&cmd);
 }
-
