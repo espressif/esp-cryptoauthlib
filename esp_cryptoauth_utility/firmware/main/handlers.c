@@ -406,7 +406,9 @@ esp_err_t get_cert_def(unsigned char *cert_def_array, size_t data_len, cert_type
     return ESP_OK;
 }
 
-esp_err_t atecc_input_cert(unsigned char *cert_buf, size_t cert_len, cert_type_t cert_type, int *err_ret)
+#define ATECC608A_DEVICE_CERT_SLOT 10
+#define ATECC608A_SIGNER_CERT_SLOT 12
+esp_err_t atecc_input_cert(unsigned char *cert_buf, size_t cert_len, cert_type_t cert_type, bool lock, int *err_ret)
 {
     int ret = -1;
 
@@ -446,17 +448,32 @@ esp_err_t atecc_input_cert(unsigned char *cert_buf, size_t cert_len, cert_type_t
 
     if (cert_type == CERT_TYPE_DEVICE) {
         ECU_DEBUG_LOG(TAG, "writing device cert ..");
-        ;
         if (ATCA_SUCCESS != (ret = atcacert_write_cert((const atcacert_def_t *)&g_cert_def_common, der_cert, der_cert_size + 1))) {
-            ESP_LOGE(TAG, "writecert failed , ret is %02x", ret);
+            ESP_LOGE(TAG, "writecert failed , ret is %02x\nPlease make sure that the device cert slot is not locked", ret);
             goto exit;
         }
+        if (lock) {
+            ret = atcab_lock_data_slot(ATECC608A_DEVICE_CERT_SLOT);
+            if (ret != ATCA_SUCCESS) {
+                ESP_LOGE(TAG, "Failed to lock slot 10 (device certificate)\nThis action is supposed to fail if the slot is already locked");
+                goto exit;
+            }
+            ESP_LOGI(TAG, "Slot %d has been locked, and cannot be used again", ATECC608A_DEVICE_CERT_SLOT);
+        }
+
     } else if (cert_type == CERT_TYPE_SIGNER) {
         ECU_DEBUG_LOG(TAG, "writing signer cert ..");
-        ;
         if (ATCA_SUCCESS != (ret = atcacert_write_cert(&g_cert_def_common, der_cert, der_cert_size + 1))) {
-            ESP_LOGE(TAG, "writecert failed , ret is %02x", ret);
+            ESP_LOGE(TAG, "writecert failed , ret is %02x\nPlease make sure that the signer cert slot is not locked", ret);
             goto exit;
+        }
+        if (lock) {
+            ret = atcab_lock_data_slot(ATECC608A_SIGNER_CERT_SLOT);
+            if (ret != ATCA_SUCCESS) {
+                ESP_LOGE(TAG, "Failed to lock slot 12 (signer certificate),\nThis action is supposed to fail if the slot is already locked");
+                goto exit;
+            }
+            ESP_LOGI(TAG, "Slot %d has been locked, and cannot be used again", ATECC608A_DEVICE_CERT_SLOT);
         }
     } else {
         ESP_LOGE(TAG, "wrong cert type");
@@ -534,4 +551,3 @@ exit:
     *err_ret = ret;
     return ESP_FAIL;
 }
-
