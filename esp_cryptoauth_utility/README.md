@@ -1,19 +1,19 @@
 # ESP_CRYPTOAUTH_UTILITY
 
 # Description
- The python utility helps to configure and provision `ATECC608` chip on `ESP32-WROOM-32SE` module.The [ESP32-WROOM-32SE](https://www.espressif.com/sites/default/files/documentation/esp32-wroom-32se_datasheet_en.pdf) module has Microchip's [ATECC608A](https://www.microchip.com/wwwproducts/en/ATECC608A) integrated on the module. The latest ESP32-WROOM-32SE modules have the Microchip's [ATECC608B](https://www.microchip.com/en-us/products/security-ics/trust-platform/trust-and-go) integrated on the module.
-    There are currently three types of ATECC608 which are [Trust & Go](https://www.microchip.com/wwwproducts/en/ATECC608A-TNGTLS), [TrustFlex](https://www.microchip.com/wwwproducts/en/ATECC608A-TFLXTLS) and [TrustCustom](https://www.microchip.com/wwwproducts/en/ATECC608A). `Trust & Go` and `TrustFlex` chips are preconfigured by the manufacturer (Microchip) so we only need to generate manifest file for those chips. `TrustCustom` type of chips are not configured, so for `TrustCustom` type of chips need to be first configured and then provisioned with a newly  generated device certificate and key pair. The script automatically detects which type of ATECC608 chip is integrated with `ESP32-WROOM-32SE` so it will proceed to next required steps on its own.
+ The python utility helps to configure and provision [ATECC608A](https://www.microchip.com/en-us/product/atecc608a)/[ATECC608B](https://www.microchip.com/en-us/product/atecc608b) chip connected to an ESP module. Currently the utility is supported for ESP32, ESP32S3 and ESP32C3.
+ 
+ There are currently three types of ATECC608 which are [Trust & Go](https://www.microchip.com/wwwproducts/en/ATECC608A-TNGTLS), [TrustFlex](https://www.microchip.com/wwwproducts/en/ATECC608A-TFLXTLS) and [TrustCustom](https://www.microchip.com/wwwproducts/en/ATECC608A). `Trust & Go` and `TrustFlex` chips are preconfigured by the manufacturer (Microchip) so we only need to generate manifest file for those chips. `TrustCustom` type of chips are not configured, so for `TrustCustom` type of chips need to be first configured and then provisioned with a newly  generated device certificate and key pair. The script automatically detects which type of ATECC608 chip is connected to the ESP module so it will proceed to the next required step on its own.
 
 # Hardware Required
-It requires [ESP32-WROOM-32SE](https://www.espressif.com/sites/default/files/documentation/esp32-wroom-32se_datasheet_en.pdf) which has Microchip's [ATECC608A](https://www.microchip.com/wwwproducts/en/ATECC608A) (Secure Element) integrated on the module.
 
-An ESP32 to which ATECC608 is connected with I2C interface can also be used by setting the I2C pin configurations (see below option about providing I2C pin cfg).
-
-> Note: It is recommended to change directory to `esp_cryptoauth_utility` to execute all following commands if not already done.
+* One ESP32, ESP32S3 or ESP32C3 module.
+* An [ATECC608A](https://www.microchip.com/en-us/product/atecc608a)/[ATECC608B](https://www.microchip.com/en-us/product/atecc608b) connected with the ESP module using I2C interface. 
 
 ## Installation
+The `esp_cryptoauth_utility` that helps configure the ATECC608 module can be installed with the following command:
 
-```
+``` sh
 pip install esp-cryptoauth-utility
 ```
 
@@ -37,43 +37,49 @@ openssl req -new -x509 -key signerkey.pem -out signercert.pem -days 365
 
 ## Step 2:- Provision the module/Generate manifest file
 
+### 1) Workflow
 *   The tool will automatically detect the type of ATECC608 chip connected to ESP module and perform its intended task which are as follows.
 
     * For `TrustCustom` type of ATECC608 chip first configure ATECC608 chip with its default configuration options.The tool will create a device cert by generating a private key on slot 0 of the module, passing the CSR to host, sign the CSR with signer cert generated in step above. To set validity of device cert please refer [device_cert_validity](README.md#set-validity-of-device-cert-for-trustcustom). Save the device cert on the ATECC chip as well as on the host machine as `device_cert.pem`, it also saves the cert definitions in `output_files` directory for future use.
 
-    * For `Trust & Go` and `TrustFlex` type of ATECC608 devices this script will generate the manifest file with the name of chip serial number.The manifest file will be signed with the signer cert generated above. The generated manifest file should be registered with the cloud to register the device certificate.
+    * For `Trust & Go` and `TrustFlex` type of ATECC608 devices this script will generate the manifest file with the name of chip serial number. The generated manifest file can be registered with the cloud to register the device certificate.
 
-The command is as follows:
+---
+### 2) Provide I2C pin configuration
+The I2C pins of the ESP32 to which ATECC608 chip is connected can be provided as a parameter to the python script. The command option to be given is as follows:
+```
+python secure_cert_mfg.py --i2c-sda-pin /* SDA pin no */ --i2c-scl-pin /* SCL pin no */ /* + other options */
+```
+
+When no pin configurations are provided to the script, by default SDA=16, SCL=17 will be used which is the I2C configuration of ESP32-WROOM-32SE.
+
+### 3) Execute the script
+
+The final command to be executed is as follows:
 
 ```
-python secure_cert_mfg.py --signer-cert signercert.pem --signer-cert-private-key signerkey.pem --port /UART/COM/PORT
+python secure_cert_mfg.py --signer-cert signercert.pem --signer-cert-private-key signerkey.pem --port /UART/COM/PORT --i2c-sda-pin /* SDA pin no */ --i2c-scl-pin /* SCL pin no */
 ```
 
 > Note: The names `signercert.pem` and `signerkey.pem` denote the name of the signer cert and key files respectively, you can replace them with `relative/path/to/you/signer/cert` and `key` respectively. The `UART/COM/PORT` represents the host machine COM port to which your ESP32-WROOM-32SE is connected.Please refer [check serial port](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/establish-serial-connection.html#check-port-on-windows) for obtaining the serial port connected to ESP.
 
 If you do not provide `signer-cert` and `signer-cert-private-key` in above command, `sample_signer_cert.pem` stored at `sample_certs` will be used.
 
----
-### Provide I2C pin configuration (for modules other than ESP32-WROOM32-SE)
-The I2C pins of the ESP32 to which ATECC608 chip is connected can be provided as a parameter to the python script.
-The command is as follows:
-```
-python secure_cert_mfg.py --i2c-sda-pin /* SDA pin no */ --i2c-scl-pin /* SCL pin no */ /* + other options */
-```
-When no pin configurations are provided to the script, by default SDA=16, SCL=17 will be used which is the I2C configuration of ESP32-WROOM-32SE.
 
-### Find type of ATECC608 chip connected to ESP32-WROOM32-SE.
+## Additional options supported by the script
+
+### 1) Find type of ATECC608 chip connected to ESP module.
 
 The command is as follows:
 ```
-python secure_cert_mfg.py --port /serial/port --type
+python secure_cert_mfg.py --port /serial/port --type + /* Other options */
 ```
-It will print the type of ATECC608 chip connected to ESP32-WROOM-32SE on console.
+It will print the type of ATECC608 chip connected to the ESP module on console.
 
-### Set validity of device cert for TrustCustom
+### 2) Set validity of device cert for TrustCustom
 The validity (in years) of device certificate generated for `TrustCustom` chips from the time of generation of cert can be set with `--valid-for-years` option. Please refer the following command:
 ```
-python secure_cert_mfg.py --port /serial/port --valid-for-years /Years
+python secure_cert_mfg.py --port /serial/port --valid-for-years /Years + /* Other options */
 ```
 
 >Note: If `--valid-for-years` is not provided then default value for validity of certiticates will be used, which is 40 years.
