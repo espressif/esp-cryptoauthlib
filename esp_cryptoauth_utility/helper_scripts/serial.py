@@ -16,15 +16,15 @@ import os
 from sys import exit
 import time
 import subprocess
-import collections
+import serial
 import sys
 try:
     import esptool
 except ImportError:  # cheat and use IDF's copy of esptool if available
-    idf_path = os.getenv("IDF_PATH")
+    idf_path = os.getenv('IDF_PATH')
     if not idf_path or not os.path.exists(idf_path):
         raise
-    sys.path.insert(0, os.path.join(idf_path, "components", "esptool_py", "esptool"))
+    sys.path.insert(0, os.path.join(idf_path, 'components', 'esptool_py', 'esptool'))
     import esptool
 
 
@@ -34,53 +34,72 @@ class cmd_interpreter:
     It executes the specified commands and returns its result.
     It is a stateless, thus does not maintain the current state of the firmware.
     """
+    def __init__(self, port, baudrate=115200):
+        # Serial Port settings
+        self.port = serial.Serial()
+        self.port.timeout = 2
+        self.port.baudrate = baudrate
+        self.port.port = port
+        self.port.open()
+        self.port.close()
 
-    def wait_for_init(self, port):
-        print("Wait for init")
-        port.timeout = 1.5
-        port.baudrate = 115200
+    def wait_for_init(self):
+        print('Wait for init')
+        if not self.port.isOpen():
+            self.port.open()
         start_time = time.time()
         p_timeout = 20
+        line = ''
         while True:
-            line = port.readline()
-            if b'Initialising Command line: >>' in line:
-                print("- CLI Initialised")
-                return True
-            elif (time.time() - start_time) > p_timeout:
-                print("connection timed out")
-                return False
+            try:
+                line = self.port.readline()
+                print(line.decode())
+                if b'Initialising Command line: >>' in line:
+                    print('- CLI Initialised')
+                    return True
+                elif (time.time() - start_time) > p_timeout:
+                    print('connection timed out')
+                    return False
+            except UnicodeError:
+                print(line)
 
     def exec_cmd(self, port, command, args=None):
-        ret = ""
+        ret = ''
         status = None
-        port.timeout = 3
-        port.baudrate = 115200
-        port.write(command.encode() + b'\r')
+        self.port.timeout = 3
+        self.port.baudrate = 115200
+        self.port.write(command.encode() + b'\r')
         if args:
             time.sleep(0.1)
             if type(args) is str:
                 args = args.encode()
-            port.write(args)
-            port.write(b'\0')
+
+            self.port.write(args)
+            self.port.write(b'\0')
 
         while True:
-            port.timeout = 1.5
-            line = (port.readline()).decode()
-            print(line)
+            line = ''
+            try:
+                line = (self.port.readline()).decode()
+                print(line)
+            except UnicodeError:
+                sys.stdout.flush()
+                sys.stdout.write(line)
+
             if 'Status: Success' in line:
                 status = True
             elif 'Status: Failure' in line:
                 status = False
             if status is True or status is False:
                 while True:
-                    line = (port.readline()).decode()
-                    if ">>" in line:
+                    line = (self.port.readline()).decode()
+                    if '>>' in line:
                         if status is True:
                             print(line)
                         break
                     else:
                         ret += line
-                return [{"Status": status}, {"Return": ret}]
+                return [{'Status': status}, {'Return': ret}]
 
 
 def _exec_shell_cmd(self, command):
@@ -89,20 +108,33 @@ def _exec_shell_cmd(self, command):
     return out
 
 
-def load_app_stub(bin_path, esp):
-    esp.connect()
-    # Absolute path needs to be sent here
-    if (os.path.exists(bin_path) is False):
-        print("Stub not found")
-        exit(0)
-    arg_tuple = collections.namedtuple('ram_image', ['filename'])
-    args = arg_tuple(bin_path)
-    esp.change_baud(baud=921600)
-    esptool.load_ram(esp, args)
+def get_load_ram_esptool_args(stub_path):
+    class EsptoolArgs(object):
+        def __init__(self, attributes):
+            for key, value in attributes.items():
+                self.__setattr__(key, value)
+    esptool_args = EsptoolArgs({
+            'filename': stub_path
+            })
+    return esptool_args
+
+def load_app_stub(port, baudrate, stub_path):
+    if stub_path is None:
+        raise ValueError('Stub path cannot be None')
+    esp = esptool.cmds.detect_chip(port=port, baud=baudrate)
+    print('Chip detected')
+    esp.flash_spi_attach(0)
+
+    esptool_args = get_load_ram_esptool_args(stub_path)
+    start_time = time.time()
+    esptool.cmds.load_ram(esp, esptool_args)
+    end_time = time.time()
+    print('Time required to load the app into the RAM'
+          ' = {}s'.format(end_time - start_time))
 
 
 def esp_cmd_check_ok(retval, cmd_str):
     if retval[0]['Status'] is not True:
-        print((cmd_str + "failed to execute"))
+        print((cmd_str + 'failed to execute'))
         print((retval[1]['Return']))
         exit(0)
