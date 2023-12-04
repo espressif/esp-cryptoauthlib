@@ -46,7 +46,7 @@ def get_binary_stub_path(target_chip):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='''Provision the ESPWROOM32SE device with
+    parser = argparse.ArgumentParser(description='''Provision the ESP32 device with
         device_certificate and signer_certificate required for TLS authentication''')
 
     parser.add_argument(

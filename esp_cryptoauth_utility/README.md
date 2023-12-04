@@ -51,7 +51,7 @@ The I2C pins of the ESP32 to which ATECC608 chip is connected can be provided as
 python secure_cert_mfg.py --i2c-sda-pin /* SDA pin no */ --i2c-scl-pin /* SCL pin no */ /* + other options */
 ```
 
-When no pin configurations are provided to the script, by default SDA=16, SCL=17 will be used which is the I2C configuration of ESP32-WROOM-32SE.
+When no pin configurations are provided to the script, by default SDA=16, SCL=17 will be used for the I2C configuration of ATECC608A.
 
 ### 3) Execute the script
 
@@ -61,7 +61,7 @@ The final command to be executed is as follows:
 python secure_cert_mfg.py --signer-cert signercert.pem --signer-cert-private-key signerkey.pem --port /UART/COM/PORT --i2c-sda-pin /* SDA pin no */ --i2c-scl-pin /* SCL pin no */
 ```
 
-> Note: The names `signercert.pem` and `signerkey.pem` denote the name of the signer cert and key files respectively, you can replace them with `relative/path/to/you/signer/cert` and `key` respectively. The `UART/COM/PORT` represents the host machine COM port to which your ESP32-WROOM-32SE is connected.Please refer [check serial port](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/establish-serial-connection.html#check-port-on-windows) for obtaining the serial port connected to ESP.
+> Note: The names `signercert.pem` and `signerkey.pem` denote the name of the signer cert and key files respectively, you can replace them with `relative/path/to/you/signer/cert` and `key` respectively. The `UART/COM/PORT` represents the host machine COM port to which your ESP32 is connected. Please refer [check serial port](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/establish-serial-connection.html#check-port-on-windows) for obtaining the serial port connected to ESP.
 
 If you do not provide `signer-cert` and `signer-cert-private-key` in above command, `sample_signer_cert.pem` stored at `sample_certs` will be used.
 
