@@ -1,0 +1,7 @@
+## IDF Component Manager Manifest File
+version: "1.0.0"
+description: CryptoAuth element (ATECC608A) interfacing example
+dependencies:
+  espressif/esp-cryptoauthlib:
+    version: "*"
+    override_path: '../../../'
