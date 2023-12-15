@@ -46,7 +46,7 @@ def get_binary_stub_path(target_chip):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='''Provision the ESPWROOM32SE device with
+    parser = argparse.ArgumentParser(description='''Provision the ESP32 device with
         device_certificate and signer_certificate required for TLS authentication''')
 
     parser.add_argument(
@@ -80,19 +80,19 @@ def main():
         '--target_chip',
         dest='target_chip',
         required=True, choices=supported_targets,
-        help='The pin no of I2C SDA pin of esp32 to which atecc608 is connected, default = 16')
+        help='Target ESP32 series chip')
 
     parser.add_argument(
         "--i2c-sda-pin', '-sda_pin'",
         dest='i2c_sda_pin',
-        default=16,type=int,
-        help='The pin no of I2C SDA pin of esp32 to which atecc608 is connected, default = 16')
+        default=21,type=int,
+        help='The pin no of I2C SDA pin of esp32 to which atecc608 is connected, default = 21')
 
     parser.add_argument(
         "--i2c-scl-pin', '-scl_pin'",
         dest='i2c_scl_pin',
-        default=17,type=int,
-        help='The pin no of I2C SCL pin of esp32 to which atecc608 is connected, default = 17')
+        default=22,type=int,
+        help='The pin no of I2C SCL pin of esp32 to which atecc608 is connected, default = 22')
 
     parser.add_argument(
         '--type', '--print-atecc608-type',
