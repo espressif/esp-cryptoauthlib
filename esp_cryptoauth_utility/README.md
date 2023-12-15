@@ -51,7 +51,7 @@ The I2C pins of the ESP32 to which ATECC608 chip is connected can be provided as
 python secure_cert_mfg.py --i2c-sda-pin /* SDA pin no */ --i2c-scl-pin /* SCL pin no */ /* + other options */
 ```
 
-When no pin configurations are provided to the script, by default SDA=16, SCL=17 will be used for the I2C configuration of ATECC608A.
+When no pin configurations are provided to the script, by default SDA=21, SCL=22 will be used for the I2C configuration of ATECC608A.
 
 ### 3) Execute the script
 
