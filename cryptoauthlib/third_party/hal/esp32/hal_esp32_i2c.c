@@ -34,7 +34,7 @@
 #define LOG_LOCAL_LEVEL                    ESP_LOG_INFO
 #endif
 
-#define MAX_I2C_BUSES SOC_HP_I2C_NUM  //ESP32 has 2 I2C bus
+#define MAX_I2C_BUSES SOC_I2C_NUM  //ESP32 has 2 I2C bus
 
 typedef struct atcaI2Cmaster
 {
@@ -111,7 +111,7 @@ ATCA_STATUS hal_i2c_init(ATCAIface iface, ATCAIfaceCfg *cfg)
                 i2c_hal_data[bus].id = I2C_NUM_0;
                 break;
             case 1:
-#if SOC_HP_I2C_NUM >= 2
+#if SOC_I2C_NUM >= 2
                 i2c_hal_data[bus].id = I2C_NUM_1;
 #endif
                 break;
