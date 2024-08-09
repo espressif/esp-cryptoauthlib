@@ -30,13 +30,13 @@ except ImportError:
     )
     exit(1)
 
-VERSION = '0.11.2'
+VERSION = '0.12.0'
 
 long_description = """
 ======================
 esp-cryptoauth-utility
 ======================
-The python utility helps to configure and provision ATECC608 chip connected to an ESP module. Currently the utility is supported for ESP32, ESP32S3, ESP32C3.
+The python utility helps to configure and provision ATECC608 chip connected to an ESP module. Currently the utility is supported for ESP32, ESP32S3, ESP32C3 and ESP32C6.
 
 The esp-cryptoauth-utility is `hosted on github <https://github.com/espressif/esp-cryptoauthlib/tree/master/esp_cryptoauth_utility>`_.
 

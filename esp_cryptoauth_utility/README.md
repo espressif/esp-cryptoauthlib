@@ -1,13 +1,13 @@
 # ESP_CRYPTOAUTH_UTILITY
 
 # Description
- The python utility helps to configure and provision [ATECC608A](https://www.microchip.com/en-us/product/atecc608a)/[ATECC608B](https://www.microchip.com/en-us/product/atecc608b) chip connected to an ESP module. Currently the utility is supported for ESP32, ESP32S3 and ESP32C3.
+ The python utility helps to configure and provision [ATECC608A](https://www.microchip.com/en-us/product/atecc608a)/[ATECC608B](https://www.microchip.com/en-us/product/atecc608b) chip connected to an ESP module. Currently the utility is supported for ESP32, ESP32S3, ESP32C3 and ESP32C6.
  
  There are currently three types of ATECC608 which are [Trust & Go](https://www.microchip.com/wwwproducts/en/ATECC608A-TNGTLS), [TrustFlex](https://www.microchip.com/wwwproducts/en/ATECC608A-TFLXTLS) and [TrustCustom](https://www.microchip.com/wwwproducts/en/ATECC608A). `Trust & Go` and `TrustFlex` chips are preconfigured by the manufacturer (Microchip) so we only need to generate manifest file for those chips. `TrustCustom` type of chips are not configured, so for `TrustCustom` type of chips need to be first configured and then provisioned with a newly  generated device certificate and key pair. The script automatically detects which type of ATECC608 chip is connected to the ESP module so it will proceed to the next required step on its own.
 
 # Hardware Required
 
-* One ESP32, ESP32S3 or ESP32C3 module.
+* One ESP32, ESP32S3, ESP32C3 or ESP32C6 module.
 * An [ATECC608A](https://www.microchip.com/en-us/product/atecc608a)/[ATECC608B](https://www.microchip.com/en-us/product/atecc608b) connected with the ESP module using I2C interface. 
 
 ## Installation
