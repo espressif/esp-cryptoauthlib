@@ -21,7 +21,7 @@ import sys
 import sample_bins
 import sample_certs
 
-supported_targets = {'esp32', 'esp32s2', 'esp32s3', 'esp32c3'}
+supported_targets = {'esp32', 'esp32s2', 'esp32s3', 'esp32c3', 'esp32c6'}
 try:
     import esptool
 except ImportError:  # cheat and use IDF's copy of esptool if available
