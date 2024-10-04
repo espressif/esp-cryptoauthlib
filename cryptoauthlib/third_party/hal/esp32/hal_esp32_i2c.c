@@ -35,6 +35,18 @@ static uint8_t I2C_SCL_PIN = CONFIG_ATCA_I2C_SCL_PIN;
 
 #define MAX_I2C_BUSES 2  //ESP32 has 2 I2C bus
 
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
+    #if SOC_HP_I2C_NUM >= 2
+        #define I2C_PORT_2 I2C_NUM_1
+    #elif SOC_LP_I2C_NUM >= 1
+        #define I2C_PORT_2 LP_I2C_NUM_0
+    #endif
+#else
+    #if SOC_I2C_NUM >= 2
+        #define I2C_PORT_2 I2C_NUM_1
+    #endif
+#endif
+
 void hal_esp32_i2c_set_pin_config(uint8_t sda_pin, uint8_t scl_pin)
 {
     I2C_SDA_PIN = sda_pin;
@@ -117,7 +129,7 @@ ATCA_STATUS hal_i2c_init(ATCAIface iface, ATCAIfaceCfg *cfg)
                 break;
 #if SOC_I2C_NUM >= 2
             case 1:
-                i2c_hal_data[bus].id = I2C_NUM_1;
+                i2c_hal_data[bus].id = I2C_PORT_2;
                 break;
 #endif /* SOC_I2C_NUM >= 2 */
 
