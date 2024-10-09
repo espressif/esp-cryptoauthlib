@@ -373,7 +373,7 @@ esp_err_t get_cert_def(unsigned char *cert_def_array, size_t data_len, cert_type
     int template_size = ((strlen((const char *)&cert_def_array[0]) - count ) / 2);
     int pos = 0;
     char temp[2];
-    g_cert_template_device = (uint8_t *)calloc(sizeof(uint8_t), template_size);
+    g_cert_template_device = (uint8_t *)calloc(template_size, sizeof(uint8_t));
     /* Converting the templates from string to hex, 2 bytes at a time */
     for (int i = 0; i < template_size; i++) {
         memcpy(temp, &cert_def_array[count], 2);
@@ -383,7 +383,7 @@ esp_err_t get_cert_def(unsigned char *cert_def_array, size_t data_len, cert_type
     }
     atcacert_cert_element_t *cert_element;
 
-    cert_element =  (atcacert_cert_element_t *)calloc(sizeof(atcacert_cert_element_t), 2);
+    cert_element = (atcacert_cert_element_t *)calloc(2, sizeof(atcacert_cert_element_t));
 
     if (cert_type == CERT_TYPE_SIGNER) {
         cert_element[0].device_loc.offset = 35 - g_cert_def_common.std_cert_elements[STDCERT_ISSUE_DATE].offset;
