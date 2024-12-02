@@ -1,6 +1,6 @@
 # ESP-CRYPTOAUTHLIB
 
-This is a port of Microchip's [cryptoauthlib](https://github.com/MicrochipTech/cryptoauthlib) for ESP-IDF. It contains necessary build support to use cryptoauthlib with ESP-IDF as well as `esp_cryptoauthlib_utility` for configuring and provisiong ATECC608A chip connected to an ESP module. Currently the utility is supported for ESP32, ESP32S3, ESP32C3 and ESP32C6. The cryptoauthlib folder which is a subset of Microchip's [cryptoauthlib](https://github.com/MicrochipTech/cryptoauthlib) is created with help of script [generate_component.sh](https://github.com/espressif/esp-cryptoauthlib/blob/master/generate_component.sh).
+This is a port of Microchip's [cryptoauthlib](https://github.com/MicrochipTech/cryptoauthlib) for ESP-IDF. It contains necessary build support to use cryptoauthlib with ESP-IDF as well as `esp_cryptoauthlib_utility` for configuring and provisiong ATECC608A chip connected to an ESP module. Currently the utility is supported for ESP32, ESP32S3, ESP32C3, ESP32C5 and ESP32C6. The cryptoauthlib folder which is a subset of Microchip's [cryptoauthlib](https://github.com/MicrochipTech/cryptoauthlib) is created with help of script [generate_component.sh](https://github.com/espressif/esp-cryptoauthlib/blob/master/generate_component.sh).
 
 ## Requirements
 
