@@ -28,7 +28,6 @@
 #include "esp_partition.h"
 #include "esp_flash_partitions.h"
 #include "spi_flash_mmap.h"
-#include "driver/uart.h"
 
 #include "handlers.h"
 
@@ -42,11 +41,10 @@
 #include "tng_atcacert_client.h"
 
 #include "mbedtls/atca_mbedtls_wrap.h"
+#include "ecu_console_interface.h"
 
 static const char *TAG = "secure_element";
 static bool is_atcab_init = false;
-
-extern QueueHandle_t uart_queue;
 
 static atcacert_def_t g_cert_def_common;
 uint8_t *g_cert_template_device;
@@ -330,24 +328,21 @@ esp_err_t get_cert_def(unsigned char *cert_def_array, size_t data_len, cert_type
     } else if (cert_type == CERT_TYPE_SIGNER) {
         g_cert_def_common = g_cert_def_1_signer;
     }
-    int uart_num = 0, i = 0;
-    esp_err_t ret;
-    uart_event_t event;
-
+    ecu_console_interface_t *console_interface = get_console_interface();
+    if (console_interface == NULL) {
+        ESP_LOGE(TAG, "Console interface is NULL");
+        return ESP_FAIL;
+    }
+    int i = 0;
     memset(cert_def_array, 0xff, data_len);
     do {
-        ret = xQueueReceive(uart_queue, (void * )&event, (TickType_t) portMAX_DELAY);
-        if (ret != pdPASS) {
-            continue;
-        }
-
-        if (event.type == UART_DATA) {
-            while (uart_read_bytes(uart_num, (uint8_t *) &cert_def_array[i], 1, 0)) {
-                if (cert_def_array[i] == '\0') {
-                    break;
-                }
-                i++;
+        esp_err_t ret;
+        ret = console_interface->read_bytes((uint8_t *) &cert_def_array[i], 1, portMAX_DELAY);
+        if (ret > 0) {
+            if (cert_def_array[i] == '\0') {
+                break;
             }
+            i++;
         }
     } while (i < data_len - 1 && cert_def_array[i] != '\0');
 
@@ -416,23 +411,21 @@ esp_err_t atecc_input_cert(unsigned char *cert_buf, size_t cert_len, cert_type_t
         ESP_LOGE(TAG, "\ndevice is not initialized");
         goto exit;
     }
-    int uart_num = 0, i = 0;
-    uart_event_t event;
-
+    int i = 0;
+    ecu_console_interface_t *console_interface = get_console_interface();
+    if (console_interface == NULL) {
+        ESP_LOGE(TAG, "Console interface is NULL");
+        return ESP_FAIL;
+    }
     memset(cert_buf, 0xff, cert_len);
     do {
-        ret = xQueueReceive(uart_queue, (void * )&event, (TickType_t) portMAX_DELAY);
-        if (ret != pdPASS) {
-            continue;
-        }
-
-        if (event.type == UART_DATA) {
-            while (uart_read_bytes(uart_num, (uint8_t *) &cert_buf[i], 1, 0)) {
-                if (cert_buf[i] == '\0') {
-                    break;
-                }
-                i++;
+        esp_err_t esp_ret;
+        esp_ret = console_interface->read_bytes((uint8_t *) &cert_buf[i], 1, portMAX_DELAY);
+        if (esp_ret > 0) {
+            if (cert_buf[i] == '\0') {
+                break;
             }
+            i++;
         }
     } while (i < cert_len - 1 && cert_buf[i] != '\0');
 

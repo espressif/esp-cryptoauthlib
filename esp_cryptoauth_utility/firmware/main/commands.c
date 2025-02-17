@@ -46,6 +46,7 @@ static unsigned char crypt_buf_public_key[CRYPT_BUF_PUB_KEY_LEN];
 static unsigned char crypt_buf_csr[CRYPT_BUF_LEN];
 static unsigned char crypt_buf_cert[CRYPT_BUF_LEN];
 static esp_err_t register_init_device();
+static esp_err_t register_get_version();
 static esp_err_t register_print_chip_info();
 static esp_err_t register_generate_key_pair();
 static esp_err_t register_generate_csr();
@@ -60,6 +61,7 @@ static device_status_t atca_cli_status_object;
 esp_err_t register_command_handler()
 {
     esp_err_t ret = register_init_device();
+    ret |= register_get_version();
     ret |= register_print_chip_info();
     ret |= register_generate_key_pair();
     ret |= register_generate_csr();
@@ -524,6 +526,24 @@ static esp_err_t register_get_tngtls_device_cert()
         "  Example:\n"
         "  get-tngtls-device-cert",
         .func = &get_tngtls_device_cert,
+    };
+    return esp_console_cmd_register(&cmd);
+}
+
+static esp_err_t get_version(int argc, char **argv)
+{
+    printf("%s\n", PROJECT_VER);
+
+    fflush(stdout);
+    return ESP_OK;
+}
+
+static esp_err_t register_get_version()
+{
+    const esp_console_cmd_t cmd = {
+        .command = "version",
+        .help = "get project version information",
+        .func = &get_version,
     };
     return esp_console_cmd_register(&cmd);
 }

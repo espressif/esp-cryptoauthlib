@@ -34,7 +34,6 @@
 
 #include "esp_log.h"
 #include <esp_console.h>
-#include <driver/uart.h>
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -42,66 +41,72 @@
 
 #include "commands.h"
 
-#define CMD_BUFFER_SIZE 1024
+#include "ecu_console_interface.h"
 
 static const char *TAG = "CMD Handler";
-QueueHandle_t uart_queue;
 
-static void scli_loop()
-{
-    int uart_num = 0, i, cmd_ret;
-    uint8_t linebuf[CMD_BUFFER_SIZE];
+#define ECU_CMD_BUFFER_SIZE 1024
+
+static void scli_loop() {
+    int i, cmd_ret;
+    uint8_t linebuf[ECU_CMD_BUFFER_SIZE];
     esp_err_t ret;
-    uart_event_t event;
-
-    uart_driver_install(uart_num, CMD_BUFFER_SIZE, 0, 32, &uart_queue, 0);
-    printf("Initialising Command line: >>");
-    fflush(stdout);
     while (true) {
-        uart_write_bytes(uart_num, "\n>>\n", 4);
+        ecu_console_interface_t *console_interface = get_console_interface();
+        ret = console_interface->write_bytes("\n>>\n", 4, portMAX_DELAY);
+        if (ret < 0) {
+            ESP_LOGE(TAG, "Failed to write to USB Serial JTAG");
+            continue;
+        }
         bzero(linebuf, sizeof(linebuf));
         i = 0;
         do {
-            ret = xQueueReceive(uart_queue, (void * )&event, (TickType_t)portMAX_DELAY);
-            if (ret != pdPASS) {
-                continue;
-            }
-
-            if (event.type == UART_DATA) {
-                while (uart_read_bytes(uart_num, (uint8_t *) &linebuf[i], 1, 0)) {
-                    if (linebuf[i] == '\r') {
-                        uart_write_bytes(uart_num, "\r\n", 2);
-                    } else {
-                        uart_write_bytes(uart_num, (char *) &linebuf[i], 1);
+            ret = console_interface->read_bytes((uint8_t *)&linebuf[i], 1, portMAX_DELAY);
+            if (ret > 0) {
+                if (linebuf[i] == '\r') {
+                    ret = console_interface->write_bytes("\r\n", 2, portMAX_DELAY);
+                    if (ret < 0) {
+                        ESP_LOGE(TAG, "Failed to write to USB Serial JTAG");
+                        break;
                     }
-                    i++;
+                } else {
+                    ret = console_interface->write_bytes((char *)&linebuf[i], 1, portMAX_DELAY);
+                    if (ret < 0) {
+                        ESP_LOGE(TAG, "Failed to write to USB Serial JTAG");
+                        break;
+                    }
                 }
+                i++;
             }
-        } while ((i < CMD_BUFFER_SIZE - 1) && linebuf[i - 1] != '\r');
-
-        /* Remove the truncating \r\n */
+        } while ((i < ECU_CMD_BUFFER_SIZE - 1) && linebuf[i - 1] != '\r');
+        ret = console_interface->wait_tx_done(portMAX_DELAY);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to wait for TX done");
+            continue;
+        }
         linebuf[strlen((char *)linebuf) - 1] = '\0';
-        printf("\n");
 
-        esp_console_run((char *) linebuf, &cmd_ret);
+        esp_console_run((char *)linebuf, &cmd_ret);
     }
 }
 
-static void scli_task(void *arg)
-{
+static void scli_task(void *arg) {
     esp_console_config_t console_config = {
         .max_cmdline_args = 8,
-        .max_cmdline_length = CMD_BUFFER_SIZE,
+        .max_cmdline_length = ECU_CMD_BUFFER_SIZE,
     };
     esp_console_init(&console_config);
     esp_console_register_help_command();
-
     if (register_command_handler() == ESP_OK) {
+        esp_err_t ret = ecu_initialize_console_interface();
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to initialize ECU console interface");
+            return;
+        }
         scli_loop();
     } else {
         ESP_LOGE(TAG, "Failed to register all commands");
     }
-
     ESP_LOGI(TAG, "Stopping the CLI");
     vTaskDelete(NULL);
 }
