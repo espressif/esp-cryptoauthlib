@@ -28,8 +28,8 @@
 
 static const char *TAG = "ECU Console Interface";
 static ecu_console_interface_t *console_interface = NULL;
-#define ECU_CONSOLE_INTERFACE_TX_BUFFER_SIZE 256
-#define ECU_CONSOLE_INTERFACE_RX_BUFFER_SIZE 256
+#define ECU_CONSOLE_INTERFACE_TX_BUFFER_SIZE 2048
+#define ECU_CONSOLE_INTERFACE_RX_BUFFER_SIZE 2048
 #define ECU_CONSOLE_INTERFACE_TIMEOUT 500
 
 #if SOC_UART_SUPPORTED
@@ -54,12 +54,11 @@ static int uart_write(const char *buf, size_t length, TickType_t ticks_to_wait)
 {
     return uart_write_bytes(ECU_UART_NUM, buf, length); // Added ticks_to_wait
 }
-#endif
-
 static esp_err_t ecu_uart_wait_tx_done(TickType_t ticks_to_wait)
 {
     return uart_wait_tx_done(ECU_UART_NUM, ticks_to_wait);
 }
+#endif
 
 ecu_console_interface_t ecu_console_interface_uart = {
 #if SOC_UART_SUPPORTED
@@ -97,12 +96,11 @@ static esp_err_t usb_serial_uninstall()
 {
     return usb_serial_jtag_driver_uninstall();
 }
-#endif
-
 static esp_err_t ecu_usb_serial_wait_tx_done(TickType_t ticks_to_wait)
 {
     return usb_serial_jtag_wait_tx_done(ticks_to_wait);
 }
+#endif
 
 ecu_console_interface_t ecu_console_interface_usb = {
 #if SOC_USB_SERIAL_JTAG_SUPPORTED
@@ -135,6 +133,8 @@ esp_err_t ecu_initialize_console_interface(void)
     esp_err_t esp_ret = ESP_FAIL;
     int ret = 0;
     char linebuf[8];
+
+    ESP_LOGI(TAG, "Free heap: %ld bytes", esp_get_free_heap_size());
 
 #if SOC_USB_SERIAL_JTAG_SUPPORTED
     console_interface = &ecu_console_interface_usb;

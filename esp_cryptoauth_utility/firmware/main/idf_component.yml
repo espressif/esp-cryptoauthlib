@@ -1,7 +1,6 @@
 ## IDF Component Manager Manifest File
-version: "1.0.0"
-description: CryptoAuth element (ATECC608A) firmware example
 dependencies:
-  espressif/esp-cryptoauthlib:
-    version: "*"
-    override_path: '../../../'
+  ## Required IDF version
+  idf:
+    version: '>=4.1.0'
+  espressif/esp-cryptoauthlib: '*'

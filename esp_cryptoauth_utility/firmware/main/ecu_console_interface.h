@@ -24,6 +24,7 @@ extern "C" {
 typedef enum {
     ECU_CONSOLE_INTERFACE_UART,
     ECU_CONSOLE_INTERFACE_USB,
+    ECU_CONSOLE_INTERFACE_NONE,
 } ecu_console_interface_type_t;
 
 typedef struct {

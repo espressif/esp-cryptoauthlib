@@ -320,20 +320,30 @@ static esp_err_t program_device_cert(int argc, char **argv)
 {
     esp_err_t ret = ESP_ERR_INVALID_ARG;
     int err_code;
+    uint32_t received_crc = 0;
+
     if (atca_cli_status_object >= CSR_GEN_SUCCESS) {
-        if (argc == 1 || argc == 2) {
+        if (argc == 2 || argc == 3) { // Expecting lock flag and optional CRC32
             bool lock = false;
-            if (argc == 2) {
-                if (atoi(argv[1]) == 1) {
-                    lock = true;
-                }
+
+            if (atoi(argv[1]) == 1) {
+                lock = true;
             }
-            ret = atecc_input_cert(crypt_buf_cert, CRYPT_BUF_LEN, CERT_TYPE_DEVICE, lock, &err_code);
+
+            if (argc == 3) {
+                received_crc = (uint32_t)strtoul(argv[2], NULL, 10);
+            }
+
+            // Pass CRC32 to atecc_input_cert
+            ret = atecc_input_cert(crypt_buf_cert, CRYPT_BUF_LEN, CERT_TYPE_DEVICE, lock, &err_code, received_crc);
+        } else {
+            ESP_LOGE(TAG, "Invalid arguments. Expected usage: program-dev-cert <lock> [CRC32]");
         }
 
         ESP_LOGI(TAG, "Status: %s\n", ret ? "Failure" : "Success");
         atca_cli_status_object = ret ? PROGRAM_CERT_FAIL : PROGRAM_CERT_SUCCESS;
     }
+
     if (atca_cli_status_object < CSR_GEN_SUCCESS) {
         ESP_LOGE(TAG, "Generate the CSR before calling this function.");
     } else if (ret == ESP_ERR_INVALID_ARG) {
@@ -352,6 +362,7 @@ static esp_err_t register_program_device_cert()
         .command = "program-dev-cert",
         .help = "Sets the UART command handler to input the device certificate.\n"
         "  Usage:program-dev-cert lock\n",
+        "  Example: program-dev-cert 0 CRC_VALUE",
         .func = &program_device_cert,
     };
     return esp_console_cmd_register(&cmd);
@@ -361,15 +372,23 @@ static esp_err_t program_signer_cert(int argc, char **argv)
 {
     esp_err_t ret = ESP_ERR_INVALID_ARG;
     int err_code;
+    uint32_t received_crc = 0;
     if (atca_cli_status_object >= CSR_GEN_SUCCESS) {
-        if (argc == 1 || argc == 2) {
+        if (argc == 2 || argc == 3) {
             bool lock = false;
-            if (argc == 2) {
-                if (atoi(argv[1]) == 1) {
-                    lock = true;
-                }
+
+            if (atoi(argv[1]) == 1) {
+                lock = true;
             }
-            ret = atecc_input_cert(crypt_buf_cert, CRYPT_BUF_LEN, CERT_TYPE_SIGNER, lock, &err_code);
+
+            if (argc == 3) {
+                received_crc = (uint32_t)strtoul(argv[2], NULL, 10);
+            }
+
+            // Pass CRC32 to atecc_input_cert
+            ret = atecc_input_cert(crypt_buf_cert, CRYPT_BUF_LEN, CERT_TYPE_SIGNER, lock, &err_code, received_crc);
+        } else {
+            ESP_LOGE(TAG, "Invalid arguments. Expected usage: program-signer-cert <lock> [CRC32]");
         }
 
         ESP_LOGI(TAG, "Status: %s\n", ret ? "Failure" : "Success");
@@ -385,7 +404,7 @@ static esp_err_t program_signer_cert(int argc, char **argv)
 
 
     fflush(stdout);
-    return ESP_OK;
+    return ret;
 }
 
 static esp_err_t register_program_signer_cert()
@@ -394,6 +413,7 @@ static esp_err_t register_program_signer_cert()
         .command = "program-signer-cert",
         .help = "Sets the UART command handler to input the signer certificate.\n"
         "  Usage:program-signer-cert lock\n",
+        "  Example: program-signer-cert 0 CRC_VALUE",
         .func = &program_signer_cert,
     };
     return esp_console_cmd_register(&cmd);

@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.16)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 
-set(PROJECT_VER "v1.0.0")
+set(PROJECT_VER "v1.0.1")
 add_compile_definitions(PROJECT_VER="${PROJECT_VER}")
 
 # firmware generated for esp_cryptoauth_utility

@@ -25,6 +25,7 @@
 
 #include "esp_log.h"
 #include "esp_err.h"
+#include "esp_rom_crc.h"
 #include "esp_partition.h"
 #include "esp_flash_partitions.h"
 #include "spi_flash_mmap.h"
@@ -403,7 +404,7 @@ esp_err_t get_cert_def(unsigned char *cert_def_array, size_t data_len, cert_type
 
 #define ATECC608A_DEVICE_CERT_SLOT 10
 #define ATECC608A_SIGNER_CERT_SLOT 12
-esp_err_t atecc_input_cert(unsigned char *cert_buf, size_t cert_len, cert_type_t cert_type, bool lock, int *err_ret)
+esp_err_t atecc_input_cert(unsigned char *cert_buf, size_t cert_len, cert_type_t cert_type, bool lock, int *err_ret, uint32_t expected_crc)
 {
     int ret = -1;
 
@@ -428,6 +429,13 @@ esp_err_t atecc_input_cert(unsigned char *cert_buf, size_t cert_len, cert_type_t
             i++;
         }
     } while (i < cert_len - 1 && cert_buf[i] != '\0');
+
+    // Compute CRC32
+    uint32_t calculated_crc = esp_rom_crc32_le(0, cert_buf, i);
+    if (calculated_crc != expected_crc) {
+        ESP_LOGE(TAG, "CRC32 mismatch! Expected: %ld, Received: %ld", expected_crc, calculated_crc);
+        return ESP_ERR_INVALID_CRC;
+    }
 
     uint8_t der_cert[800];
     size_t der_cert_size = 800;

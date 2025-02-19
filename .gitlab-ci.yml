@@ -1,0 +1,61 @@
+stages:
+  - build
+
+variables:
+  PEDANTIC_FLAGS: "-Werror -Werror=deprecated-declarations -Werror=unused-function"
+
+.setup_idf_template: &setup_idf
+  before_script:
+    - . ${IDF_PATH}/export.sh
+    - |
+      if [[ "${IDF_VER}" == "release-v4.3" ]]; then
+        pip install idf-component-manager==1.2.3 'idf-build-apps==1.1.5'
+      elif [[ "${IDF_VER}" == "release-v4.4" ]]; then
+        pip install idf-component-manager==1.2.3 'idf-build-apps==1.1.5'
+      else
+        pip install --upgrade idf-component-manager 'idf-build-apps>=2.4,<2.5'
+      fi
+    - export EXTRA_CFLAGS="${PEDANTIC_FLAGS}"
+    - export EXTRA_CXXFLAGS="${PEDANTIC_FLAGS}"
+
+# Build esp_cryptoauthlib_utility/firmware for all targets with configurable IDF version (default: release-v5.4)
+build:firmware-all-targets:
+  stage: build
+  tags:
+    - build
+  parallel:
+    matrix:
+      - IDF_VER: ["release-v5.4"]
+  image: espressif/idf:${IDF_VER}
+  <<: *setup_idf
+  script:
+    - echo "Building esp_cryptoauth_utility/firmware with ESP-IDF ${IDF_VER}"
+    - |
+      for target in esp32 esp32s3 esp32c2 esp32c3 esp32c6 esp32h2 esp32p4; do
+        echo "Building for $target"
+        idf-build-apps build --target $target --paths esp_cryptoauth_utility/firmware --build-dir build_${target} || exit 1
+
+        echo "Generating ecu_firmware.bin from ELF using esptool.py for $target"
+        esptool.py --chip $target \
+          elf2image esp_cryptoauth_utility/firmware/build_${target}/ecu_firmware.elf \
+          --output esp_cryptoauth_utility/firmware/build_${target}/ecu_firmware.bin || exit 1
+
+        echo "Writing info.txt for $target"
+        git_commit_sha=$(git rev-parse HEAD)
+        bin_sha1=$(sha1sum esp_cryptoauth_utility/firmware/build_${target}/ecu_firmware.bin | awk '{ print $1 }')
+        {
+          echo "ESP-IDF Version: ${IDF_VER}"
+          echo "Git Commit: ${git_commit_sha}"
+          echo "ecu_firmware.bin SHA1: ${bin_sha1}"
+        } > esp_cryptoauth_utility/firmware/build_${target}/info.txt
+      done
+  allow_failure: false
+  artifacts:
+    when: always
+    paths:
+      - esp_cryptoauth_utility/firmware/build_*/ecu_firmware.elf
+      - esp_cryptoauth_utility/firmware/build_*/ecu_firmware.bin
+      - esp_cryptoauth_utility/firmware/build_*/info.txt
+      - esp_cryptoauth_utility/firmware/build_*/flasher_args.json
+      - esp_cryptoauth_utility/firmware/build_*/config/sdkconfig.json
+    expire_in: 1 week
