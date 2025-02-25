@@ -29,6 +29,8 @@
 #ifndef ATCA_MBEDTLS_WRAP_H
 #define ATCA_MBEDTLS_WRAP_H
 
+#include "cryptoauthlib.h"
+
 #ifdef ATCA_MBEDTLS
 
 #ifdef __COVERITY__
