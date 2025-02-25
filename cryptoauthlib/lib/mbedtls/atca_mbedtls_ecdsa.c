@@ -26,23 +26,12 @@
  */
 
 /* mbedTLS boilerplate includes */
-#include "mbedtls/version.h"
 
-#if (MBEDTLS_VERSION_NUMBER < 0x03000000)
 #if !defined(MBEDTLS_CONFIG_FILE)
 #include "mbedtls/config.h"
 #else
 #include MBEDTLS_CONFIG_FILE
 #endif
-/**
- * Mbedtls-3.0 forward compatibility
- */
-#ifndef MBEDTLS_PRIVATE
-#define MBEDTLS_PRIVATE(member) member
-#endif
-#else /* (MBEDTLS_VERSION_NUMBER < 0x03000000) */
-#include "mbedtls/build_info.h"
-#endif /* !(MBEDTLS_VERSION_NUMBER < 0x03000000) */
 
 #if defined(MBEDTLS_ECDSA_C)
 
@@ -55,19 +44,19 @@
 #include "mbedtls/ecdsa.h"
 
 
-int atca_mbedtls_ecdsa_sign(const mbedtls_mpi* d, mbedtls_mpi* r, mbedtls_mpi* s,
+int atca_mbedtls_ecdsa_sign(const mbedtls_mpi* data, mbedtls_mpi* r, mbedtls_mpi* s,
                             const unsigned char* msg, size_t msg_len)
 {
     int ret = 0;
 
-    if (d && r && s && msg && ATCA_SHA256_DIGEST_SIZE <= msg_len)
+    if (NULL != data && NULL != r && NULL != s && NULL != msg && ATCA_SHA256_DIGEST_SIZE <= msg_len)
     {
         atca_mbedtls_eckey_t key_info;
         uint8_t raw_sig[ATCA_ECCP256_SIG_SIZE];
 
-        ret = mbedtls_mpi_write_binary(d, (unsigned char*)&key_info, sizeof(atca_mbedtls_eckey_t));
+        ret = mbedtls_mpi_write_binary(data, (unsigned char*)&key_info, sizeof(atca_mbedtls_eckey_t));
 
-        if (!ret)
+        if (0 == ret)
         {
             if (ATCA_SUCCESS != atcab_sign_ext(key_info.device, key_info.handle, msg, raw_sig))
             {
@@ -75,14 +64,14 @@ int atca_mbedtls_ecdsa_sign(const mbedtls_mpi* d, mbedtls_mpi* r, mbedtls_mpi* s
             }
         }
 
-        if (!ret)
+        if (0 == ret)
         {
-            ret = mbedtls_mpi_read_binary(r, raw_sig, ATCA_ECCP256_SIG_SIZE / 2);
+            ret = mbedtls_mpi_read_binary(r, raw_sig, ATCA_ECCP256_SIG_SIZE / 2u);
         }
 
-        if (!ret)
+        if (0 == ret)
         {
-            ret = mbedtls_mpi_read_binary(s, &raw_sig[ATCA_ECCP256_SIG_SIZE / 2], ATCA_ECCP256_SIG_SIZE / 2);
+            ret = mbedtls_mpi_read_binary(s, &raw_sig[ATCA_ECCP256_SIG_SIZE / 2u], ATCA_ECCP256_SIG_SIZE / 2u);
         }
     }
 
@@ -141,18 +130,18 @@ int mbedtls_ecdsa_verify(mbedtls_ecp_group *grp,
         ret = mbedtls_mpi_write_binary(s, &raw_sig[ATCA_SIG_SIZE / 2], ATCA_SIG_SIZE / 2);
     }
 
-    if (Q->MBEDTLS_PRIVATE(Z).MBEDTLS_PRIVATE(n) == 1)
+    if (Q->Z.n == 1)
     {
         uint8_t public_key[ATCA_PUB_KEY_SIZE];
 
         /* Convert the public key to it's uncompressed binary */
         if (!ret)
         {
-            ret = mbedtls_mpi_write_binary(&(Q->MBEDTLS_PRIVATE(X)), public_key, ATCA_PUB_KEY_SIZE / 2);
+            ret = mbedtls_mpi_write_binary(&(Q->X), public_key, ATCA_PUB_KEY_SIZE / 2);
         }
         if (!ret)
         {
-            ret = mbedtls_mpi_write_binary(&(Q->MBEDTLS_PRIVATE(Y)), &public_key[ATCA_PUB_KEY_SIZE / 2], ATCA_PUB_KEY_SIZE / 2);
+            ret = mbedtls_mpi_write_binary(&(Q->Y), &public_key[ATCA_PUB_KEY_SIZE / 2], ATCA_PUB_KEY_SIZE / 2);
         }
 
         if (!ret)
@@ -170,7 +159,7 @@ int mbedtls_ecdsa_verify(mbedtls_ecp_group *grp,
         atca_mbedtls_eckey_t key_info;
         if (!ret)
         {
-            ret = mbedtls_mpi_write_binary(&Q->MBEDTLS_PRIVATE(Z), (unsigned char*)&key_info, sizeof(atca_mbedtls_eckey_t));
+            ret = mbedtls_mpi_write_binary(&Q->Z, (unsigned char*)&key_info, sizeof(atca_mbedtls_eckey_t));
         }
 
         if (!ret)

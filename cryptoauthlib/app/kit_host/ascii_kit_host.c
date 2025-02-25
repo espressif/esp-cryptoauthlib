@@ -281,7 +281,11 @@ static ATCA_STATUS kit_host_ca_talk(ascii_kit_host_context_t* ctx, int argc, cha
 
     if (ctx && argc && response && rlen)
     {
+#ifdef __XC8        
+        static ATCAPacket packet;
+#else
         ATCAPacket packet;
+#endif                
         size_t plen = sizeof(packet) - 2;
 
         atcab_hex2bin(argv[0], strlen(argv[0]), (uint8_t*)&packet.txsize, &plen);
@@ -293,6 +297,9 @@ static ATCA_STATUS kit_host_ca_talk(ascii_kit_host_context_t* ctx, int argc, cha
         {
             *rlen = kit_host_format_response(response, *rlen, status, NULL, 0);
         }
+#ifdef __XC8          
+        (void)memset(&packet, 0, sizeof(ATCAPacket));
+#endif        
     }
     return status;
 }
@@ -342,8 +349,8 @@ static ATCA_STATUS kit_host_ca_select(ascii_kit_host_context_t* ctx, int argc, c
 
 #if ATCA_CA_SUPPORT
 static kit_host_map_entry_t kit_host_ca_physical_map[] = {
-    { "select", kit_host_ca_select                    },
-    { NULL,     NULL                                  }
+    { "select", kit_host_ca_select },
+    { NULL,     NULL               }
 };
 
 static ATCA_STATUS kit_host_ca_physical(ascii_kit_host_context_t* ctx, int argc, char* argv[], uint8_t* response, size_t* rlen)
@@ -353,12 +360,12 @@ static ATCA_STATUS kit_host_ca_physical(ascii_kit_host_context_t* ctx, int argc,
 
 /* Cryptoauth Device commands */
 static kit_host_map_entry_t kit_host_ca_map[] = {
-    { "wake",     kit_host_ca_wake                        },
-    { "idle",     kit_host_ca_idle                        },
-    { "sleep",    kit_host_ca_sleep                       },
-    { "talk",     kit_host_ca_talk                        },
-    { "physical", kit_host_ca_physical                    },
-    { NULL,       NULL                                    }
+    { "wake",     kit_host_ca_wake     },
+    { "idle",     kit_host_ca_idle     },
+    { "sleep",    kit_host_ca_sleep    },
+    { "talk",     kit_host_ca_talk     },
+    { "physical", kit_host_ca_physical },
+    { NULL,       NULL                 }
 };
 
 static ATCA_STATUS kit_host_process_ca(ascii_kit_host_context_t* ctx, int argc, char* argv[], uint8_t* response, size_t* rlen)
@@ -392,17 +399,18 @@ static ATCA_STATUS kit_host_ta_talk(ascii_kit_host_context_t* ctx, int argc, cha
 
     if (ctx && argc && response && rlen)
     {
-        ATCA_TA_CmdPacket* packet = (ATCA_TA_CmdPacket*)ctx->buffer;
+        cal_buffer* packet = talib_packet_alloc();
 
-        if (packet)
+        if (NULL != packet)
         {
             size_t plen = sizeof(ctx->buffer) - 2;
+            packet->buf = ctx->buffer;
 
-            atcab_hex2bin(argv[0], strlen(argv[0]), (uint8_t*)&packet->length, &plen);
+            atcab_hex2bin(argv[0], strlen(argv[0]), packet->buf, &plen);
             if (ATCA_SUCCESS == (status = talib_execute_command_raw(packet, ctx->device)))
             {
-                ATCA_TA_RspPacket * resp = (ATCA_TA_RspPacket*)packet;
-                *rlen = kit_host_format_response(response, *rlen, status, resp->data, resp->resp_code);
+
+                *rlen = kit_host_format_response(response, *rlen, status, &packet->buf[PKT_CAL_BUF_DATA_IDX], packet->buf[2]);
             }
             else
             {
@@ -426,7 +434,11 @@ static ATCA_STATUS kit_host_ta_send(ascii_kit_host_context_t* ctx, int argc, cha
 
         uint8_t address = atgetifacecfg(&ctx->device->mIface)->atcai2c.address;
 
+        (void)atcontrol(&ctx->device->mIface, ATCA_HAL_CONTROL_SELECT, NULL, 0);
+
         status = atsend(&ctx->device->mIface, address, ctx->buffer, plen);
+
+        (void)atcontrol(&ctx->device->mIface, ATCA_HAL_CONTROL_DESELECT, NULL, 0);
         *rlen = 0;
     }
     return status;
@@ -435,7 +447,7 @@ static ATCA_STATUS kit_host_ta_send(ascii_kit_host_context_t* ctx, int argc, cha
 static ATCA_STATUS kit_host_ta_receive(ascii_kit_host_context_t* ctx, int argc, char* argv[], uint8_t* response, size_t* rlen)
 {
     ATCA_STATUS status = ATCA_BAD_PARAM;
-    uint16_t rxdata_max_size = ATCA_CMD_DATA_MAX_LENGTH;
+    uint16_t rxdata_max_size = ATCA_RSP_DATA_MAX_LENGTH;
     uint16_t length_size = 2;
     uint16_t read_length = 0;
 
@@ -450,6 +462,8 @@ static ATCA_STATUS kit_host_ta_receive(ascii_kit_host_context_t* ctx, int argc, 
             uint8_t word_address = ctx->buffer[0];
 
             rxdata_max_size = ((uint16_t)ctx->buffer[1] * 256) + ctx->buffer[2];
+
+            (void)atcontrol(&ctx->device->mIface, ATCA_HAL_CONTROL_SELECT, NULL, 0);
 
             if (ATCA_SUCCESS != (status = atsend(&ctx->device->mIface, address, &word_address, sizeof(word_address))))
             {
@@ -471,7 +485,7 @@ static ATCA_STATUS kit_host_ta_receive(ascii_kit_host_context_t* ctx, int argc, 
                     status = ATCA_SMALL_BUFFER;
                     break;
                 }
-                if (read_length < (3 + length_size))  //status(1) and CRC(2) size are same for CA and TA, length is variable.
+                if (read_length < (3 + length_size))    //status(1) and CRC(2) size are same for CA and TA, length is variable.
                 {
                     status = ATCA_RX_FAIL;
                     break;
@@ -505,8 +519,9 @@ static ATCA_STATUS kit_host_ta_receive(ascii_kit_host_context_t* ctx, int argc, 
                     break;
                 }
             }
-        }
-        while (0);
+
+            (void)atcontrol(&ctx->device->mIface, ATCA_HAL_CONTROL_DESELECT, NULL, 0);
+        } while (0);
         if (ATCA_SUCCESS == status)
         {
             *rlen = kit_host_format_response(ctx->buffer, sizeof(ctx->buffer), status, &ctx->buffer[sizeof(ctx->buffer) / 2], read_length + length_size);
@@ -520,8 +535,8 @@ static ATCA_STATUS kit_host_ta_receive(ascii_kit_host_context_t* ctx, int argc, 
 }
 
 static kit_host_map_entry_t kit_host_ta_physical_map[] = {
-    { "select", kit_host_ca_select                    }, /* Selection logic is the same */
-    { NULL,     NULL                                  }
+    { "select", kit_host_ca_select },   /* Selection logic is the same */
+    { NULL,     NULL               }
 };
 
 static ATCA_STATUS kit_host_ta_physical(ascii_kit_host_context_t* ctx, int argc, char* argv[], uint8_t* response, size_t* rlen)
@@ -530,14 +545,14 @@ static ATCA_STATUS kit_host_ta_physical(ascii_kit_host_context_t* ctx, int argc,
 }
 
 static kit_host_map_entry_t kit_host_ta_map[] = {
-    { "wake",     kit_host_ta_wake                        },
-    { "idle",     kit_host_ta_idle                        },
-    { "sleep",    kit_host_ta_sleep                       },
-    { "talk",     kit_host_ta_talk                        },
-    { "send",     kit_host_ta_send                        },
-    { "receive",  kit_host_ta_receive                     },
-    { "physical", kit_host_ta_physical                    },
-    { NULL,       NULL                                    }
+    { "wake",     kit_host_ta_wake     },
+    { "idle",     kit_host_ta_idle     },
+    { "sleep",    kit_host_ta_sleep    },
+    { "talk",     kit_host_ta_talk     },
+    { "send",     kit_host_ta_send     },
+    { "receive",  kit_host_ta_receive  },
+    { "physical", kit_host_ta_physical },
+    { NULL,       NULL                 }
 };
 
 ATCA_STATUS kit_host_process_ta(ascii_kit_host_context_t* ctx, int argc, char* argv[], uint8_t* response, size_t* rlen)
@@ -578,10 +593,10 @@ static ATCA_STATUS kit_host_board_get_device(ascii_kit_host_context_t* ctx, int 
 
 
 static kit_host_map_entry_t kit_host_board_map[] = {
-    { "version",  kit_host_board_get_version            },
-    { "firmware", kit_host_board_get_firmware           },
-    { "device",   kit_host_board_get_device             },
-    { NULL,       NULL                                  }
+    { "version",  kit_host_board_get_version  },
+    { "firmware", kit_host_board_get_firmware },
+    { "device",   kit_host_board_get_device   },
+    { NULL,       NULL                        }
 };
 
 static ATCA_STATUS kit_host_process_board(ascii_kit_host_context_t* ctx, int argc, char* argv[], uint8_t* response, size_t* rlen)
@@ -591,15 +606,15 @@ static ATCA_STATUS kit_host_process_board(ascii_kit_host_context_t* ctx, int arg
 
 
 static const kit_host_map_entry_t kit_host_target_map[] = {
-    { "board", kit_host_process_board         },
+    { "board", kit_host_process_board },
 #if ATCA_CA_SUPPORT
-    { "ecc",   kit_host_process_ca            },
-    { "sha",   kit_host_process_ca            },
+    { "ecc",   kit_host_process_ca    },
+    { "sha",   kit_host_process_ca    },
 #endif
 #if ATCA_TA_SUPPORT
-    { "ta",    kit_host_process_ta            },
+    { "ta",    kit_host_process_ta    },
 #endif
-    { NULL,    NULL                           }
+    { NULL,    NULL                   }
 };
 
 static ATCA_STATUS kit_host_process_target(ascii_kit_host_context_t* ctx, int argc, char* argv[], uint8_t* response, size_t* rlen)
@@ -677,6 +692,8 @@ void kit_host_task(ascii_kit_host_context_t* ctx)
                     txlen = snprintf((char*)ctx->buffer, sizeof(ctx->buffer), "%02X()\n", status);
                 }
                 ctx->phy->send((void*)ctx->phy, ctx->buffer, txlen);
+
+                memset(ctx->buffer, '\0', sizeof(ctx->buffer));
 
                 ptr = ctx->buffer;
             }

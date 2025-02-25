@@ -45,7 +45,7 @@
 extern "C" {
 #endif
 
-ATCA_DLL ATCADevice _gDevice;
+ATCA_DLL ATCADevice g_atcab_device_ptr;
 
 // Basic global methods
 ATCA_STATUS atcab_version(char *ver_str);
@@ -71,18 +71,21 @@ bool atcab_is_ta_device(ATCADeviceType dev_type);
 #include "crypto/atca_crypto_hw_aes.h"
 
 // Hardware Accelerated algorithms
-ATCA_STATUS atcab_pbkdf2_sha256_ext(ATCADevice device, const uint32_t iter, const uint16_t slot, const uint8_t* salt, const size_t salt_len, uint8_t* result, size_t result_len);
+#if ATCAB_PBKDF2_SHA256_EN
+ATCA_STATUS atcab_pbkdf2_sha256_ext(ATCADevice device, const uint32_t iter, const uint16_t slot, const uint8_t* salt, const size_t salt_len, uint8_t* result,
+                                    size_t result_len);
 ATCA_STATUS atcab_pbkdf2_sha256(const uint32_t iter, const uint16_t slot, const uint8_t* salt, const size_t salt_len, uint8_t* result, size_t result_len);
+#endif
 
 #ifdef ATCA_USE_ATCAB_FUNCTIONS
 
 /* Basic global methods */
-ATCA_STATUS _atcab_exit(void);
 ATCA_STATUS atcab_wakeup(void);
 ATCA_STATUS atcab_idle(void);
 ATCA_STATUS atcab_sleep(void);
 //ATCA_STATUS atcab_get_addr(uint8_t zone, uint16_t slot, uint8_t block, uint8_t offset, uint16_t* addr);
 ATCA_STATUS atcab_get_zone_size(uint8_t zone, uint16_t slot, size_t* size);
+ATCA_STATUS atcab_get_zone_size_ext(ATCADevice device, uint8_t zone, uint16_t slot, size_t* size);
 
 // AES command functions
 ATCA_STATUS atcab_aes(uint8_t mode, uint16_t key_id, const uint8_t* aes_in, uint8_t* aes_out);
@@ -93,14 +96,24 @@ ATCA_STATUS atcab_aes_decrypt_ext(ATCADevice device, uint16_t key_id, uint8_t ke
 ATCA_STATUS atcab_aes_gfm(const uint8_t* h, const uint8_t* input, uint8_t* output);
 
 /* AES GCM */
+#if CALIB_AES_GCM_EN
 ATCA_STATUS atcab_aes_gcm_init(atca_aes_gcm_ctx_t* ctx, uint16_t key_id, uint8_t key_block, const uint8_t* iv, size_t iv_size);
+ATCA_STATUS atcab_aes_gcm_init_ext(ATCADevice device, atca_aes_gcm_ctx_t* ctx, uint16_t key_id, uint8_t key_block, const uint8_t* iv, size_t iv_size);
 ATCA_STATUS atcab_aes_gcm_init_rand(atca_aes_gcm_ctx_t* ctx, uint16_t key_id, uint8_t key_block, size_t rand_size,
                                     const uint8_t* free_field, size_t free_field_size, uint8_t* iv);
 ATCA_STATUS atcab_aes_gcm_aad_update(atca_aes_gcm_ctx_t* ctx, const uint8_t* aad, uint32_t aad_size);
+ATCA_STATUS atcab_aes_gcm_aad_update_ext(ATCADevice device, atca_aes_gcm_ctx_t* ctx, const uint8_t* aad, uint32_t aad_size);
 ATCA_STATUS atcab_aes_gcm_encrypt_update(atca_aes_gcm_ctx_t* ctx, const uint8_t* plaintext, uint32_t plaintext_size, uint8_t* ciphertext);
+ATCA_STATUS atcab_aes_gcm_encrypt_update_ext(ATCADevice device, atca_aes_gcm_ctx_t* ctx, const uint8_t* plaintext, uint32_t plaintext_size,
+                                             uint8_t* ciphertext);
 ATCA_STATUS atcab_aes_gcm_encrypt_finish(atca_aes_gcm_ctx_t* ctx, uint8_t* tag, size_t tag_size);
+ATCA_STATUS atcab_aes_gcm_encrypt_finish_ext(ATCADevice device, atca_aes_gcm_ctx_t* ctx, uint8_t* tag, size_t tag_size);
 ATCA_STATUS atcab_aes_gcm_decrypt_update(atca_aes_gcm_ctx_t* ctx, const uint8_t* ciphertext, uint32_t ciphertext_size, uint8_t* plaintext);
+ATCA_STATUS atcab_aes_gcm_decrypt_update_ext(ATCADevice device, atca_aes_gcm_ctx_t* ctx, const uint8_t* ciphertext, uint32_t ciphertext_size,
+                                             uint8_t* plaintext);
 ATCA_STATUS atcab_aes_gcm_decrypt_finish(atca_aes_gcm_ctx_t* ctx, const uint8_t* tag, size_t tag_size, bool* is_verified);
+ATCA_STATUS atcab_aes_gcm_decrypt_finish_ext(ATCADevice device, atca_aes_gcm_ctx_t* ctx, const uint8_t* tag, size_t tag_size, bool* is_verified);
+#endif
 
 /* CheckMAC command */
 ATCA_STATUS atcab_checkmac(uint8_t mode, uint16_t key_id, const uint8_t* challenge, const uint8_t* response, const uint8_t* other_data);
@@ -113,6 +126,7 @@ ATCA_STATUS atcab_counter_read(uint16_t counter_id, uint32_t* counter_value);
 
 /* DeriveKey command */
 ATCA_STATUS atcab_derivekey(uint8_t mode, uint16_t key_id, const uint8_t* mac);
+ATCA_STATUS atcab_derivekey_ext(ATCADevice device, uint8_t mode, uint16_t key_id, const uint8_t* mac);
 
 /* ECDH command */
 ATCA_STATUS atcab_ecdh_base(uint8_t mode, uint16_t key_id, const uint8_t* public_key, uint8_t* pms, uint8_t* out_nonce);
@@ -121,7 +135,8 @@ ATCA_STATUS atcab_ecdh(uint16_t key_id, const uint8_t* public_key, uint8_t* pms)
 #if defined(ATCA_USE_CONSTANT_HOST_NONCE)
 ATCA_STATUS atcab_ecdh_enc(uint16_t key_id, const uint8_t* public_key, uint8_t* pms, const uint8_t* read_key, uint16_t read_key_id);
 #else
-ATCA_STATUS atcab_ecdh_enc(uint16_t key_id, const uint8_t* public_key, uint8_t* pms, const uint8_t* read_key, uint16_t read_key_id, const uint8_t num_in[NONCE_NUMIN_SIZE]);
+ATCA_STATUS atcab_ecdh_enc(uint16_t key_id, const uint8_t* public_key, uint8_t* pms, const uint8_t* read_key, uint16_t read_key_id,
+                           const uint8_t num_in[NONCE_NUMIN_SIZE]);
 #endif
 
 ATCA_STATUS atcab_ecdh_ioenc(uint16_t key_id, const uint8_t* public_key, uint8_t* pms, const uint8_t* io_key);
@@ -137,6 +152,7 @@ ATCA_STATUS atcab_gendivkey(const uint8_t* other_data);
 // GenKey command functions
 ATCA_STATUS atcab_genkey_base(uint8_t mode, uint16_t key_id, const uint8_t* other_data, uint8_t* public_key);
 ATCA_STATUS atcab_genkey(uint16_t key_id, uint8_t* public_key);
+ATCA_STATUS atcab_genkey_ext(ATCADevice device, uint16_t key_id, uint8_t* public_key);
 ATCA_STATUS atcab_get_pubkey(uint16_t key_id, uint8_t* public_key);
 ATCA_STATUS atcab_get_pubkey_ext(ATCADevice device, uint16_t key_id, uint8_t* public_key);
 
@@ -146,6 +162,7 @@ ATCA_STATUS atcab_hmac(uint8_t mode, uint16_t key_id, uint8_t* digest);
 // Info command functions
 ATCA_STATUS atcab_info_base(uint8_t mode, uint16_t param2, uint8_t* out_data);
 ATCA_STATUS atcab_info(uint8_t* revision);
+ATCA_STATUS atcab_info_ext(ATCADevice device, uint8_t* revision);
 ATCA_STATUS atcab_info_lock_status(uint16_t param2, uint8_t *is_locked);
 ATCA_STATUS atcab_info_chip_status(uint8_t* chip_status);
 ATCA_STATUS atcab_info_set_latch(bool state);
@@ -157,10 +174,13 @@ ATCA_STATUS atcab_kdf(uint8_t mode, uint16_t key_id, const uint32_t details, con
 // Lock command functions
 ATCA_STATUS atcab_lock(uint8_t mode, uint16_t summary_crc);
 ATCA_STATUS atcab_lock_config_zone(void);
+ATCA_STATUS atcab_lock_config_zone_ext(ATCADevice device);
 ATCA_STATUS atcab_lock_config_zone_crc(uint16_t summary_crc);
 ATCA_STATUS atcab_lock_data_zone(void);
+ATCA_STATUS atcab_lock_data_zone_ext(ATCADevice device);
 ATCA_STATUS atcab_lock_data_zone_crc(uint16_t summary_crc);
 ATCA_STATUS atcab_lock_data_slot(uint16_t slot);
+ATCA_STATUS atcab_lock_data_slot_ext(ATCADevice device, uint16_t slot);
 
 // MAC command functions
 ATCA_STATUS atcab_mac(uint8_t mode, uint16_t key_id, const uint8_t* challenge, uint8_t* digest);
@@ -170,6 +190,7 @@ ATCA_STATUS atcab_nonce_base(uint8_t mode, uint16_t zero, const uint8_t* num_in,
 ATCA_STATUS atcab_nonce(const uint8_t* num_in);
 ATCA_STATUS atcab_nonce_load(uint8_t target, const uint8_t* num_in, uint16_t num_in_size);
 ATCA_STATUS atcab_nonce_rand(const uint8_t* num_in, uint8_t* rand_out);
+ATCA_STATUS atcab_nonce_rand_ext(ATCADevice device, const uint8_t* num_in, uint8_t* rand_out);
 ATCA_STATUS atcab_challenge(const uint8_t* num_in);
 ATCA_STATUS atcab_challenge_seed_update(const uint8_t* num_in, uint8_t* rand_out);
 
@@ -177,7 +198,8 @@ ATCA_STATUS atcab_challenge_seed_update(const uint8_t* num_in, uint8_t* rand_out
 #if defined(ATCA_USE_CONSTANT_HOST_NONCE)
 ATCA_STATUS atcab_priv_write(uint16_t key_id, const uint8_t priv_key[36], uint16_t write_key_id, const uint8_t write_key[32]);
 #else
-ATCA_STATUS atcab_priv_write(uint16_t key_id, const uint8_t priv_key[36], uint16_t write_key_id, const uint8_t write_key[32], const uint8_t num_in[NONCE_NUMIN_SIZE]);
+ATCA_STATUS atcab_priv_write(uint16_t key_id, const uint8_t priv_key[36], uint16_t write_key_id, const uint8_t write_key[32],
+                             const uint8_t num_in[NONCE_NUMIN_SIZE]);
 #endif
 
 // Random command functions
@@ -186,30 +208,38 @@ ATCA_STATUS atcab_random_ext(ATCADevice device, uint8_t* rand_out);
 
 // Read command functions
 ATCA_STATUS atcab_read_zone(uint8_t zone, uint16_t slot, uint8_t block, uint8_t offset, uint8_t* data, uint8_t len);
+ATCA_STATUS atcab_read_zone_ext(ATCADevice device, uint8_t zone, uint16_t slot, uint8_t block, uint8_t offset, uint8_t* data, uint8_t len);
 ATCA_STATUS atcab_is_locked(uint8_t zone, bool* is_locked);
 ATCA_STATUS atcab_is_config_locked(bool* is_locked);
+ATCA_STATUS atcab_is_config_locked_ext(ATCADevice device, bool* is_locked);
 ATCA_STATUS atcab_is_data_locked(bool* is_locked);
+ATCA_STATUS atcab_is_data_locked_ext(ATCADevice device, bool* is_locked);
 ATCA_STATUS atcab_is_slot_locked(uint16_t slot, bool* is_locked);
+ATCA_STATUS atcab_is_slot_locked_ext(ATCADevice device, uint16_t slot, bool* is_locked);
 ATCA_STATUS atcab_is_private_ext(ATCADevice device, uint16_t slot, bool* is_private);
 ATCA_STATUS atcab_is_private(uint16_t slot, bool* is_private);
 ATCA_STATUS atcab_read_bytes_zone_ext(ATCADevice device, uint8_t zone, uint16_t slot, size_t offset, uint8_t* data, size_t length);
 ATCA_STATUS atcab_read_bytes_zone(uint8_t zone, uint16_t slot, size_t offset, uint8_t* data, size_t length);
 ATCA_STATUS atcab_read_serial_number(uint8_t* serial_number);
+ATCA_STATUS atcab_read_serial_number_ext(ATCADevice device, uint8_t* serial_number);
 ATCA_STATUS atcab_read_pubkey(uint16_t slot, uint8_t* public_key);
 ATCA_STATUS atcab_read_pubkey_ext(ATCADevice device, uint16_t slot, uint8_t* public_key);
 ATCA_STATUS atcab_read_sig(uint16_t slot, uint8_t* sig);
 ATCA_STATUS atcab_read_config_zone(uint8_t* config_data);
+ATCA_STATUS atcab_read_config_zone_ext(ATCADevice device, uint8_t* config_data);
 ATCA_STATUS atcab_cmp_config_zone(uint8_t* config_data, bool* same_config);
 
 #if defined(ATCA_USE_CONSTANT_HOST_NONCE)
 ATCA_STATUS atcab_read_enc(uint16_t key_id, uint8_t block, uint8_t* data, const uint8_t* enc_key, const uint16_t enc_key_id);
 #else
-ATCA_STATUS atcab_read_enc(uint16_t key_id, uint8_t block, uint8_t* data, const uint8_t* enc_key, const uint16_t enc_key_id, const uint8_t num_in[NONCE_NUMIN_SIZE]);
+ATCA_STATUS atcab_read_enc(uint16_t key_id, uint8_t block, uint8_t* data, const uint8_t* enc_key, const uint16_t enc_key_id,
+                           const uint8_t num_in[NONCE_NUMIN_SIZE]);
 #endif
 
 // SecureBoot command functions
 ATCA_STATUS atcab_secureboot(uint8_t mode, uint16_t param2, const uint8_t* digest, const uint8_t* signature, uint8_t* mac);
-ATCA_STATUS atcab_secureboot_mac(uint8_t mode, const uint8_t* digest, const uint8_t* signature, const uint8_t* num_in, const uint8_t* io_key, bool* is_verified);
+ATCA_STATUS atcab_secureboot_mac(uint8_t mode, const uint8_t* digest, const uint8_t* signature, const uint8_t* num_in, const uint8_t* io_key,
+                                 bool* is_verified);
 
 /* SelfTest Command */
 ATCA_STATUS atcab_selftest(uint8_t mode, uint16_t param2, uint8_t* result);
@@ -248,11 +278,13 @@ ATCA_STATUS atcab_updateextra(uint8_t mode, uint16_t new_value);
 ATCA_STATUS atcab_verify(uint8_t mode, uint16_t key_id, const uint8_t* signature, const uint8_t* public_key, const uint8_t* other_data, uint8_t* mac);
 ATCA_STATUS atcab_verify_extern(const uint8_t* message, const uint8_t* signature, const uint8_t* public_key, bool* is_verified);
 ATCA_STATUS atcab_verify_extern_ext(ATCADevice device, const uint8_t* message, const uint8_t* signature, const uint8_t* public_key, bool* is_verified);
-ATCA_STATUS atcab_verify_extern_mac(const uint8_t* message, const uint8_t* signature, const uint8_t* public_key, const uint8_t* num_in, const uint8_t* io_key, bool* is_verified);
+ATCA_STATUS atcab_verify_extern_mac(const uint8_t* message, const uint8_t* signature, const uint8_t* public_key, const uint8_t* num_in, const uint8_t* io_key,
+                                    bool* is_verified);
 ATCA_STATUS atcab_verify_stored(const uint8_t* message, const uint8_t* signature, uint16_t key_id, bool* is_verified);
 ATCA_STATUS atcab_verify_stored_ext(ATCADevice device, const uint8_t* message, const uint8_t* signature, uint16_t key_id, bool* is_verified);
 ATCA_STATUS atcab_verify_stored_with_tempkey(const uint8_t* signature, uint16_t key_id, bool* is_verified);
-ATCA_STATUS atcab_verify_stored_mac(const uint8_t* message, const uint8_t* signature, uint16_t key_id, const uint8_t* num_in, const uint8_t* io_key, bool* is_verified);
+ATCA_STATUS atcab_verify_stored_mac(const uint8_t* message, const uint8_t* signature, uint16_t key_id, const uint8_t* num_in, const uint8_t* io_key,
+                                    bool* is_verified);
 
 ATCA_STATUS atcab_verify_validate(uint16_t key_id, const uint8_t* signature, const uint8_t* other_data, bool* is_verified);
 ATCA_STATUS atcab_verify_invalidate(uint16_t key_id, const uint8_t* signature, const uint8_t* other_data, bool* is_verified);
@@ -260,15 +292,19 @@ ATCA_STATUS atcab_verify_invalidate(uint16_t key_id, const uint8_t* signature, c
 /* Write command functions */
 ATCA_STATUS atcab_write(uint8_t zone, uint16_t address, const uint8_t* value, const uint8_t* mac);
 ATCA_STATUS atcab_write_zone(uint8_t zone, uint16_t slot, uint8_t block, uint8_t offset, const uint8_t* data, uint8_t len);
+ATCA_STATUS atcab_write_zone_ext(ATCADevice device, uint8_t zone, uint16_t slot, uint8_t block, uint8_t offset, const uint8_t* data, uint8_t len);
 ATCA_STATUS atcab_write_bytes_zone_ext(ATCADevice device, uint8_t zone, uint16_t slot, size_t offset_bytes, const uint8_t* data, size_t length);
 ATCA_STATUS atcab_write_bytes_zone(uint8_t zone, uint16_t slot, size_t offset_bytes, const uint8_t* data, size_t length);
 ATCA_STATUS atcab_write_pubkey(uint16_t slot, const uint8_t* public_key);
+ATCA_STATUS atcab_write_pubkey_ext(ATCADevice device, uint16_t slot, const uint8_t* public_key);
 ATCA_STATUS atcab_write_config_zone(const uint8_t* config_data);
+ATCA_STATUS atcab_write_config_zone_ext(ATCADevice device, const uint8_t* config_data);
 
 #if defined(ATCA_USE_CONSTANT_HOST_NONCE)
 ATCA_STATUS atcab_write_enc(uint16_t key_id, uint8_t block, const uint8_t* data, const uint8_t* enc_key, const uint16_t enc_key_id);
 #else
-ATCA_STATUS atcab_write_enc(uint16_t key_id, uint8_t block, const uint8_t* data, const uint8_t* enc_key, const uint16_t enc_key_id, const uint8_t num_in[NONCE_NUMIN_SIZE]);
+ATCA_STATUS atcab_write_enc(uint16_t key_id, uint8_t block, const uint8_t* data, const uint8_t* enc_key, const uint16_t enc_key_id,
+                            const uint8_t num_in[NONCE_NUMIN_SIZE]);
 #endif
 
 ATCA_STATUS atcab_write_config_counter(uint16_t counter_id, uint32_t counter_value);

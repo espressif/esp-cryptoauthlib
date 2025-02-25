@@ -35,6 +35,11 @@
 #include "cryptoauthlib.h"
 
 #if CALIB_COUNTER_EN
+
+#if (CA_MAX_PACKET_SIZE < ATCA_CMD_SIZE_MIN)
+#error "Counter command packet cannot be accommodated inside the maximum packet size provided"
+#endif
+
 /** \brief Compute the Counter functions
  *  \param[in]  device         Device context pointer
  *  \param[in]  mode           the mode used for the counter
@@ -44,52 +49,62 @@
  */
 ATCA_STATUS calib_counter(ATCADevice device, uint8_t mode, uint16_t counter_id, uint32_t *counter_value)
 {
-    ATCAPacket packet;
-    ATCA_STATUS status = ATCA_GEN_FAIL;
+    ATCAPacket * packet = NULL;
+    ATCA_STATUS status;
 
     do
     {
-        if ((device == NULL) || (counter_id > 1))
+        if ((device == NULL) || (counter_id > 1u))
         {
             status = ATCA_TRACE(ATCA_BAD_PARAM, "Either NULL pointer or invalid counter id received");
             break;
         }
 
-        // build a Counter command
-        packet.param1 = mode;
-        packet.param2 = counter_id;
-
-        if ((status = atCounter(atcab_get_device_type_ext(device), &packet)) != ATCA_SUCCESS)
+        packet = calib_packet_alloc();
+        if(NULL == packet)
         {
-            ATCA_TRACE(status, "atCounter - failed");
+            (void)ATCA_TRACE(ATCA_ALLOC_FAILURE, "calib_packet_alloc - failed");
+            status = ATCA_ALLOC_FAILURE;
             break;
         }
 
-        if ((status = atca_execute_command(&packet, device)) != ATCA_SUCCESS)
+        (void)memset(packet, 0x00, sizeof(ATCAPacket));
+
+        // build a Counter command
+        packet->param1 = mode;
+        packet->param2 = counter_id;
+
+        if ((status = atCounter(atcab_get_device_type_ext(device), packet)) != ATCA_SUCCESS)
         {
-            ATCA_TRACE(status, "calib_counter - execution failed");
+            (void)ATCA_TRACE(status, "atCounter - failed");
+            break;
+        }
+
+        if ((status = atca_execute_command(packet, device)) != ATCA_SUCCESS)
+        {
+            (void)ATCA_TRACE(status, "calib_counter - execution failed");
             break;
         }
 
         if (counter_value != NULL)
         {
-            if (packet.data[ATCA_COUNT_IDX] == 7)
+            if (packet->data[ATCA_COUNT_IDX] == 7u)
             {
                 if (atcab_is_ca2_device(device->mIface.mIfaceCFG->devtype))
                 {
                     #if ATCA_CA2_SUPPORT
-                    *counter_value = ((uint32_t)packet.data[ATCA_RSP_DATA_IDX + 3] <<  0) |
-                                     ((uint32_t)packet.data[ATCA_RSP_DATA_IDX + 2] <<  8) |
-                                     ((uint32_t)packet.data[ATCA_RSP_DATA_IDX + 1] << 16) |
-                                     ((uint32_t)packet.data[ATCA_RSP_DATA_IDX + 0] << 24);
+                    *counter_value = ((uint32_t)packet->data[ATCA_RSP_DATA_IDX + 3u] <<  0) |
+                                     ((uint32_t)packet->data[ATCA_RSP_DATA_IDX + 2u] <<  8) |
+                                     ((uint32_t)packet->data[ATCA_RSP_DATA_IDX + 1u] << 16) |
+                                     ((uint32_t)packet->data[ATCA_RSP_DATA_IDX + 0u] << 24);
                     #endif
                 }
                 else
                 {
-                    *counter_value = ((uint32_t)packet.data[ATCA_RSP_DATA_IDX + 0] <<  0) |
-                                     ((uint32_t)packet.data[ATCA_RSP_DATA_IDX + 1] <<  8) |
-                                     ((uint32_t)packet.data[ATCA_RSP_DATA_IDX + 2] << 16) |
-                                     ((uint32_t)packet.data[ATCA_RSP_DATA_IDX + 3] << 24);
+                    *counter_value = ((uint32_t)packet->data[ATCA_RSP_DATA_IDX + 0u] <<  0) |
+                                     ((uint32_t)packet->data[ATCA_RSP_DATA_IDX + 1u] <<  8) |
+                                     ((uint32_t)packet->data[ATCA_RSP_DATA_IDX + 2u] << 16) |
+                                     ((uint32_t)packet->data[ATCA_RSP_DATA_IDX + 3u] << 24);
                 }
             }
             else
@@ -98,9 +113,9 @@ ATCA_STATUS calib_counter(ATCADevice device, uint8_t mode, uint16_t counter_id, 
             }
 
         }
-    }
-    while (0);
+    } while (false);
 
+    calib_packet_free(packet);
     return status;
 }
 
