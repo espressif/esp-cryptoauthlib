@@ -27,7 +27,14 @@
  */
 
 /* mbedTLS boilerplate includes */
+
 #include "atca_config_check.h"
+#include "mbedtls/version.h"
+
+#if (MBEDTLS_VERSION_NUMBER >= 0x03000000)
+#define MBEDTLS_ALLOW_PRIVATE_ACCESS
+#include "mbedtls/build_info.h"
+#endif /* !(MBEDTLS_VERSION_NUMBER < 0x03000000) */
 
 #ifdef __COVERITY__
 #pragma coverity compliance block \
@@ -66,7 +73,6 @@
 #include "cryptoauthlib.h"
 #include "atca_mbedtls_wrap.h"
 #include "atca_mbedtls_patch.h"
-
 #include "crypto/atca_crypto_sw.h"
 #if ATCA_CA_SUPPORT || ATCA_TA_SUPPORT
 #include "atcacert/atcacert_client.h"
@@ -208,7 +214,7 @@ ATCA_STATUS atcac_sw_random(uint8_t* data, size_t data_size)
         return ATCA_FUNC_FAIL;
     }
 
-    // Setting prediction resistance 
+    // Setting prediction resistance
     (void)mbedtls_ctr_drbg_set_prediction_resistance(&ctr_drbg, MBEDTLS_CTR_DRBG_PR_ON);
 
     ret = mbedtls_ctr_drbg_random(&ctr_drbg, data, data_size);
@@ -867,7 +873,7 @@ ATCA_STATUS atcac_pk_init(
                     ret = ATCA_BAD_PARAM;
                     break;
             }
-            
+
             if (0 == ret)
             {
                 ecp = mbedtls_pk_ec(ctx->mctx);
@@ -930,7 +936,11 @@ ATCA_STATUS atcac_pk_init_pem(
         }
         else
         {
+#if (MBEDTLS_VERSION_NUMBER < 0x03000000)
             ret = mbedtls_pk_parse_key((mbedtls_pk_context*)ctx, buf, buflen, NULL, 0);
+#else
+            ret = mbedtls_pk_parse_key((mbedtls_pk_context*)ctx, buf, buflen, NULL, 0, mbedtls_ctr_drbg_random, NULL);
+#endif
         }
         status = (0 == ret) ? ATCA_SUCCESS : ATCA_FUNC_FAIL;
     }
@@ -1037,7 +1047,11 @@ ATCA_STATUS atcac_pk_sign(
 
                     if (grp->id == MBEDTLS_ECP_DP_SECP256R1 && dig_len == ATCA_SHA256_DIGEST_SIZE)
                     {
+#if (MBEDTLS_VERSION_NUMBER < 0x03000000)
                         ret = mbedtls_ecdsa_sign_det(grp, &r, &s, d, digest, dig_len, MBEDTLS_MD_SHA256);
+#else
+                        ret = mbedtls_ecdsa_sign_det_ext(grp, &r, &s, d, digest, dig_len, MBEDTLS_MD_SHA256, mbedtls_ctr_drbg_random, NULL);
+#endif
                         *sig_len = ATCA_ECCP256_SIG_SIZE;
                     }
             #if ATCA_TA_SUPPORT
@@ -1048,7 +1062,11 @@ ATCA_STATUS atcac_pk_sign(
                     }
                     else if (grp->id == MBEDTLS_ECP_DP_SECP521R1 && dig_len == ATCA_SHA512_DIGEST_SIZE)
                     {
+#if (MBEDTLS_VERSION_NUMBER < 0x03000000)
                         ret = mbedtls_ecdsa_sign_det(grp, &r, &s, d, digest, dig_len, MBEDTLS_MD_SHA512);
+#else
+                        ret = mbedtls_ecdsa_sign_det_ext(grp, &r, &s, d, digest, dig_len, MBEDTLS_MD_SHA512, mbedtls_ctr_drbg_random, NULL);
+#endif
                         *sig_len = ATCA_ECCP521_SIG_SIZE;
                     }
             #endif
@@ -1066,15 +1084,19 @@ ATCA_STATUS atcac_pk_sign(
                     {
                         ret = mbedtls_mpi_write_binary(&s, &signature[*sig_len / 2u], *sig_len / 2u);
                     }
-                    
+
                     mbedtls_mpi_free(&r);
                     mbedtls_mpi_free(&s);
-                } 
+                }
             }
             break;
         }
         case MBEDTLS_PK_RSA:
+#if (MBEDTLS_VERSION_NUMBER < 0x03000000)
             ret = mbedtls_pk_sign((mbedtls_pk_context*)ctx, MBEDTLS_MD_SHA256, digest, dig_len, signature, sig_len, NULL, NULL);
+#else
+            ret = mbedtls_pk_sign((mbedtls_pk_context*)ctx, MBEDTLS_MD_SHA256, digest, dig_len, signature, *sig_len, sig_len, mbedtls_ctr_drbg_random, NULL);
+#endif
             break;
         default:
             /* Empty default case to satisfy MISRA */
@@ -1187,10 +1209,15 @@ ATCA_STATUS atcac_pk_derive(
 
 
 #ifndef MBEDTLS_ECDSA_SIGN_ALT
-#include "mbedtls/pk_internal.h"
+#include "pk_internal.h"
+#include "pk_wrap.h"
 #include "atcacert/atcacert_der.h"
 
+#if (MBEDTLS_VERSION_NUMBER < 0x03000000)
 static size_t atca_mbedtls_eckey_get_bitlen(const void * ctx)
+#else
+static size_t atca_mbedtls_eckey_get_bitlen(mbedtls_pk_context * ctx)
+#endif
 {
     return mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY)->get_bitlen(ctx);
 }
@@ -1200,9 +1227,16 @@ static int atca_mbedtls_eckey_can_do(mbedtls_pk_type_t type)
     return mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY)->can_do(type);
 }
 
-static int atca_mbedtls_eckey_verify(void *ctx, mbedtls_md_type_t md_alg,
+
+#if (MBEDTLS_VERSION_NUMBER < 0x03000000)
+static int atca_mbedtls_eckey_verify(const void *ctx, mbedtls_md_type_t md_alg,
                                      const unsigned char *hash, size_t hash_len,
                                      const unsigned char *sig, size_t sig_len)
+#else
+static int atca_mbedtls_eckey_verify(mbedtls_pk_context *ctx, mbedtls_md_type_t md_alg,
+                                     const unsigned char *hash, size_t hash_len,
+                                     const unsigned char *sig, size_t sig_len)
+#endif
 {
 #if defined(MBEDTLS_ECDSA_VERIFY_ALT) || !(CALIB_VERIFY_EXTERN_EN || TALIB_VERIFY_EXTERN_EN)
     return mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY)->verify_func(ctx, md_alg, hash, hash_len, sig, sig_len);
@@ -1297,11 +1331,19 @@ static int atca_mbedtls_eckey_verify(void *ctx, mbedtls_md_type_t md_alg,
 #endif
 }
 
-static int atca_mbedtls_eckey_sign(void *ctx, mbedtls_md_type_t md_alg,
+#if (MBEDTLS_VERSION_NUMBER < 0x03000000)
+static int atca_mbedtls_eckey_sign(const void *ctx, mbedtls_md_type_t md_alg,
                                    const unsigned char *hash, size_t hash_len,
                                    unsigned char *sig, size_t *sig_len,
                                    int (*f_rng)(void *d1, unsigned char *d2, size_t d3),
                                    void *p_rng)
+#else
+static int atca_mbedtls_eckey_sign(mbedtls_pk_context *ctx, mbedtls_md_type_t md_alg,
+                                   const unsigned char *hash, size_t hash_len,
+                                   unsigned char *sig, size_t sig_size, size_t *sig_len,
+                                   int (*f_rng)(void *d1, unsigned char *d2, size_t d3),
+                                   void *p_rng)
+#endif
 {
     int ret = -1;
     mbedtls_ecp_keypair *ecp = (mbedtls_ecp_keypair*)ctx;
@@ -1330,9 +1372,13 @@ static int atca_mbedtls_eckey_sign(void *ctx, mbedtls_md_type_t md_alg,
     return ret;
 }
 
+#if (MBEDTLS_VERSION_NUMBER < 0x03000000)
 static int atca_mbedtls_eckey_check_pair(const void *pub, const void *prv)
+#else
+static int atca_mbedtls_eckey_check_pair(mbedtls_pk_context *pub, mbedtls_pk_context *prv, int (*f_rng)(void *, unsigned char *, size_t), void *p_rng)
+#endif
 {
-    return mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY)->check_pair_func(pub, prv);
+    return mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY)->check_pair_func(pub, prv, mbedtls_ctr_drbg_random, NULL);
 }
 
 static void * atca_mbedtls_eckey_alloc(void)
@@ -1345,7 +1391,11 @@ static void atca_mbedtls_eckey_free(void * ctx)
     mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY)->ctx_free_func(ctx);
 }
 
+#if (MBEDTLS_VERSION_NUMBER < 0x03000000)
 static void atca_mbedtls_eckey_debug(const void *ctx, mbedtls_pk_debug_item *items)
+#else
+static void atca_mbedtls_eckey_debug(mbedtls_pk_context *ctx, mbedtls_pk_debug_item *items)
+#endif
 {
     mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY)->debug_func(ctx, items);
 }
@@ -1944,7 +1994,7 @@ ATCA_STATUS atcac_get_auth_key_id(const struct atcac_x509_ctx* cert, cal_buffer*
                     {
                         status = cal_buf_set_used(auth_key_id, auth_key_id->len);
                     }
-                    akid_found = true; 
+                    akid_found = true;
                     break;
                 }
                 next = next->next;

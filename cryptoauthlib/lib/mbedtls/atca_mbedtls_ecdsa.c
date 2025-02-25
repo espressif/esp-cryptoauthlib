@@ -27,6 +27,13 @@
 
 /* mbedTLS boilerplate includes */
 
+#include "mbedtls/version.h"
+
+#if (MBEDTLS_VERSION_NUMBER >= 0x03000000)
+#define MBEDTLS_ALLOW_PRIVATE_ACCESS
+#include "mbedtls/build_info.h"
+#endif /* !(MBEDTLS_VERSION_NUMBER < 0x03000000) */
+
 #if !defined(MBEDTLS_CONFIG_FILE)
 #include "mbedtls/config.h"
 #else
