@@ -16,14 +16,17 @@
 #include <stdio.h>
 #include <string.h>
 #include <driver/i2c.h>
+#include <soc/soc_caps.h>
+
 #include "esp_err.h"
 #include "esp_log.h"
 #include "cryptoauthlib.h"
+#include "esp_idf_version.h"
 
-#define I2C0_SDA_PIN                       16
-#define I2C0_SCL_PIN                       17
-#define I2C1_SDA_PIN                       21
-#define I2C1_SCL_PIN                       22
+
+#define I2C_SDA_PIN                        CONFIG_ATCA_I2C_SDA_PIN
+#define I2C_SCL_PIN                        CONFIG_ATCA_I2C_SCL_PIN
+
 #define ACK_CHECK_EN                       0x1  /*!< I2C master will check ack from slave*/
 #define ACK_CHECK_DIS                      0x0  /*!< I2C master will not check ack from slave */
 #define ACK_VAL                            0x0  /*!< I2C ack value */
@@ -33,13 +36,29 @@
 #define LOG_LOCAL_LEVEL                    ESP_LOG_INFO
 #endif
 
-#define MAX_I2C_BUSES 2 //ESP32 has 2 I2C bus
+#define MAX_I2C_BUSES SOC_I2C_NUM
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
+
+#if SOC_HP_I2C_NUM >= 2
+#define I2C_PORT_2 I2C_NUM_1
+#elif SOC_LP_I2C_NUM >= 1
+#define I2C_PORT_2 LP_I2C_NUM_0
+#endif // SOC_HP_I2C_NUM >= 2
+
+#else // ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
+
+#if SOC_I2C_NUM >= 2
+#define I2C_PORT_2 I2C_NUM_1
+#endif // SOC_I2C_NUM >= 2
+
+#endif // !ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
 
 typedef struct atcaI2Cmaster
 {
-    int          id;
+    int id;
     i2c_config_t conf;
-    int          ref_ct;
+    int ref_ct;
 } ATCAI2CMaster_t;
 
 ATCAI2CMaster_t i2c_hal_data[MAX_I2C_BUSES];
@@ -108,23 +127,20 @@ ATCA_STATUS hal_i2c_init(ATCAIface iface, ATCAIfaceCfg *cfg)
             {
             case 0:
                 i2c_hal_data[bus].id = I2C_NUM_0;
-                i2c_hal_data[bus].conf.sda_io_num = I2C0_SDA_PIN;
-                i2c_hal_data[bus].conf.scl_io_num = I2C0_SCL_PIN;
                 break;
             case 1:
-                i2c_hal_data[bus].id = I2C_NUM_1;
-                i2c_hal_data[bus].conf.sda_io_num = I2C1_SDA_PIN;
-                i2c_hal_data[bus].conf.scl_io_num = I2C1_SCL_PIN;
+#if SOC_I2C_NUM >= 2
+                i2c_hal_data[bus].id = I2C_PORT_2;
+#endif
                 break;
             default:
                 break;
             }
+            i2c_hal_data[bus].conf.sda_io_num = I2C_SDA_PIN;
+            i2c_hal_data[bus].conf.scl_io_num = I2C_SCL_PIN;
 
-//            ESP_LOGI(TAG, "Configuring I2C");
             rc = i2c_param_config(i2c_hal_data[bus].id, &i2c_hal_data[bus].conf);
-//            ESP_LOGD(TAG, "I2C Param Config: %s", esp_err_to_name(rc));
             rc = i2c_driver_install(i2c_hal_data[bus].id, I2C_MODE_MASTER, 0, 0, 0);
-//            ESP_LOGD(TAG, "I2C Driver Install; %s", esp_err_to_name(rc));
         }
         else
         {
@@ -140,7 +156,6 @@ ATCA_STATUS hal_i2c_init(ATCAIface iface, ATCAIfaceCfg *cfg)
     }
     else
     {
-        //ESP_LOGE(TAG, "I2C init failed");
         return ATCA_COMM_FAIL;
     }
 }
@@ -173,9 +188,9 @@ ATCA_STATUS hal_i2c_send(ATCAIface iface, uint8_t word_address, uint8_t *txdata,
     }
 
 #ifdef ATCA_ENABLE_DEPRECATED
-    device_address = ATCA_IFACECFG_VALUE(cfg, atcai2c.slave_address)
+    device_address = ATCA_IFACECFG_VALUE(cfg, atcai2c.slave_address);
 #else
-    device_address = ATCA_IFACECFG_VALUE(cfg, atcai2c.address)
+    device_address = ATCA_IFACECFG_VALUE(cfg, atcai2c.address);
 #endif
 
 
