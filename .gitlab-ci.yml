@@ -1,0 +1,111 @@
+stages:
+  - prepare
+  - build
+
+variables:
+  PEDANTIC_FLAGS: "-Werror -Werror=deprecated-declarations -Werror=unused-variable -Werror=unused-but-set-variable -Werror=unused-function"
+
+# First job to determine the latest ESP-IDF release
+determine_latest_release:
+  stage: prepare
+  image: alpine:latest
+  tags:
+    - prepare
+  script: |
+    apk add --no-cache curl jq
+    LATEST_RELEASE=$(curl -s https://api.github.com/repos/espressif/esp-idf/releases/latest | jq -r '.tag_name')
+    echo "LATEST_RELEASE=${LATEST_RELEASE}" >> build.env
+    echo "Found latest ESP-IDF release: ${LATEST_RELEASE}"
+  artifacts:
+    reports:
+      dotenv: build.env
+
+.setup_idf_template: &setup_idf
+  before_script:
+    - . ${IDF_PATH}/export.sh
+    - |
+      if [[ "${IDF_VER}" == "release-v4.3" ]]; then
+        pip install idf-component-manager==1.2.3 'idf-build-apps==1.1.5'
+      elif [[ "${IDF_VER}" == "release-v4.4" ]]; then
+        pip install idf-component-manager==1.2.3 'idf-build-apps==1.1.5'
+      else
+        pip install --upgrade idf-component-manager 'idf-build-apps>=2.4,<2.5'
+      fi
+    - export EXTRA_CFLAGS="${PEDANTIC_FLAGS} -Wstrict-prototypes"
+    - export EXTRA_CXXFLAGS="${PEDANTIC_FLAGS}"
+
+# Build for ESP32 on all IDF versions
+build:esp32-all-versions:
+  stage: build
+  tags:
+    - build
+  parallel:
+    matrix:
+      - IDF_VER: ["release-v4.3", "release-v4.4", "release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4", "latest"]
+  image: espressif/idf:${IDF_VER}
+  <<: *setup_idf
+  script:
+    - idf-build-apps build --target esp32 --paths examples/atecc608_ecdsa || exit 1
+  allow_failure: false
+  artifacts:
+    when: always
+    paths:
+      - examples/atecc608_ecdsa/build/bootloader/bootloader.bin
+      - examples/atecc608_ecdsa/build/partition_table/partition-table.bin
+      - examples/atecc608_ecdsa/build/*.bin
+      - examples/atecc608_ecdsa/build/flasher_args.json
+      - examples/atecc608_ecdsa/build/config/sdkconfig.json
+    expire_in: 1 week
+
+# Build for all targets on latest ESP-IDF release
+build:all-targets-latest-release:
+  stage: build
+  needs:
+    - job: determine_latest_release
+      artifacts: true
+  tags:
+    - build
+  image: espressif/idf:${LATEST_RELEASE}
+  <<: *setup_idf
+  script:
+    - echo "Building with ESP-IDF ${LATEST_RELEASE}"
+    - |
+      for target in esp32 esp32s2 esp32s3 esp32c3 esp32c5 esp32c6 esp32h2 esp32p4; do
+        echo "Building for $target"
+        idf-build-apps build --target $target --paths examples/atecc608_ecdsa --build-dir build_${target} || exit 1
+      done
+  allow_failure: false
+  artifacts:
+    when: always
+    paths:
+      - examples/atecc608_ecdsa/build_*/bootloader/bootloader.bin
+      - examples/atecc608_ecdsa/build_*/partition_table/partition-table.bin
+      - examples/atecc608_ecdsa/build_*/*.bin
+      - examples/atecc608_ecdsa/build_*/flasher_args.json
+      - examples/atecc608_ecdsa/build_*/config/sdkconfig.json
+    expire_in: 1 week
+
+
+# Build for all targets on master branch of IDF
+build:all-targets-master:
+  stage: build
+  tags:
+    - build
+  image: espressif/idf:latest
+  <<: *setup_idf
+  script:
+    - |
+      for target in esp32 esp32s2 esp32s3 esp32c3 esp32c5 esp32c6; do
+        echo "Building for $target"
+        idf-build-apps build --target $target --paths examples/atecc608_ecdsa --build-dir build_${target} || exit 1
+      done
+  allow_failure: false
+  artifacts:
+    when: always
+    paths:
+      - examples/atecc608_ecdsa/build_*/bootloader/bootloader.bin
+      - examples/atecc608_ecdsa/build_*/partition_table/partition-table.bin
+      - examples/atecc608_ecdsa/build_*/*.bin
+      - examples/atecc608_ecdsa/build_*/flasher_args.json
+      - examples/atecc608_ecdsa/build_*/config/sdkconfig.json
+    expire_in: 1 week
