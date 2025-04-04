@@ -9,14 +9,18 @@
  */
 
 /* This is mbedtls boilerplate for library configuration */
-#include "mbedtls/mbedtls_config.h"
+#include "mbedtls/version.h"
+#if !defined(MBEDTLS_CONFIG_FILE)
+#include "mbedtls/config.h"
+#else
+#include MBEDTLS_CONFIG_FILE
+#endif
 
 /* System Includes*/
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_system.h"
-#include "spi_flash_mmap.h"
 #include "esp_log.h"
 
 /* Cryptoauthlib includes */
@@ -136,8 +140,13 @@ static int atca_ecdsa_test(void)
 #endif
 
     ESP_LOGI(TAG, " Generating ECDSA Signature...");
+
+#if (MBEDTLS_VERSION_NUMBER < 0x03000000)
+    ret = mbedtls_pk_sign(&pkey, MBEDTLS_MD_SHA256, hash, 0, buf, &olen, mbedtls_ctr_drbg_random, &ctr_drbg);
+#else
     ret = mbedtls_pk_sign(&pkey, MBEDTLS_MD_SHA256, hash, 0, buf, MBEDTLS_MPI_MAX_SIZE, &olen,
                           mbedtls_ctr_drbg_random, &ctr_drbg);
+#endif
     if (ret != 0) {
         ESP_LOGI(TAG, " failed ! mbedtls_pk_sign returned -0x%04x", -ret);
         goto exit;

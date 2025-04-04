@@ -54,4 +54,8 @@ endif()
 
 target_compile_options(${COMPONENT_LIB} PRIVATE ${COMPONENT_COMPILE_OPTIONS})
 
-
+# Suppress -Wdiscarded-qualifiers for tng_atcacert_client.c
+set_source_files_properties(
+    "${CRYPTOAUTHLIB_DIR}/../app/tng/tng_atcacert_client.c"
+    PROPERTIES COMPILE_FLAGS "-Wno-discarded-qualifiers"
+)

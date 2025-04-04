@@ -37,26 +37,27 @@
 ATCA_STATUS calib_wakeup_i2c(ATCADevice device)
 {
     ATCA_STATUS status = ATCA_BAD_PARAM;
-    uint8_t second_byte = 0x01;  // I2C general call should not interpreted as an addr write
+    uint8_t second_byte = 0U;
     ATCAIface iface = atGetIFace(device);
 
-    if (iface)
+    if (NULL != iface)
     {
         int retries = atca_iface_get_retries(iface);
         uint8_t address = atcab_get_device_address(device);
+        ATCAKitType kit_type = ATCA_KIT_UNKNOWN_IFACE;
         uint32_t temp;
         uint32_t wake;
         uint16_t rxlen;
 
         do
         {
-            if (100000UL < ATCA_IFACECFG_VALUE(iface->mIfaceCFG, atcai2c.baud))
+            if (100000u < ATCA_IFACECFG_VALUE(iface->mIfaceCFG, atcai2c.baud))
             {
-                temp = 100000UL;
-                status = atcontrol(iface, ATCA_HAL_CHANGE_BAUD, &temp, sizeof(temp));
+                temp = 100000u;
+                status = atcontrol(iface, (uint8_t)ATCA_HAL_CHANGE_BAUD, &temp, sizeof(temp));
                 if (ATCA_UNIMPLEMENTED == status)
                 {
-                    status = atcontrol(iface, ATCA_HAL_CONTROL_WAKE, NULL, 0);
+                    status = atcontrol(iface, (uint8_t)ATCA_HAL_CONTROL_WAKE, NULL, 0);
                     break;
                 }
             }
@@ -65,41 +66,40 @@ ATCA_STATUS calib_wakeup_i2c(ATCADevice device)
                 status = ATCA_SUCCESS;
             }
 
-    #if ATCA_CA2_SUPPORT
-            ATCADeviceType device_type = atcab_get_device_type_ext(device);
-
-            if (atcab_is_ca2_device(device_type))
+            if(atcab_is_ca_device(atcab_get_device_type_ext(device)))
             {
-                (void)atsend(iface, address, NULL, 0);
-            }
-            else
-            {
+                //! Drive the SDA pin low for wake up
+                //! Set i2c device addr as 0U to drive SDA low
+                (void)ifacecfg_set_address(iface->mIfaceCFG, 0U, kit_type);
 
-                (void)atsend(iface, 0x00, &second_byte, sizeof(second_byte));
+                //! I2C general call should not interpreted as an addr write
+                second_byte = 1U;
             }
-    #else
-            (void)atsend(iface, 0x00, &second_byte, sizeof(second_byte));
-    #endif
+
+            (void)atsend(iface, second_byte, NULL, 0);
+
+            //! Set the i2c device address
+            (void)ifacecfg_set_address(iface->mIfaceCFG, address, kit_type);
+
             atca_delay_us(atca_iface_get_wake_delay(iface));
 
-            rxlen = sizeof(wake);
+            rxlen = (uint16_t)sizeof(wake);
             if (ATCA_SUCCESS == status)
             {
                 status = atreceive(iface, address, (uint8_t*)&wake, &rxlen);
             }
 
-            if ((ATCA_SUCCESS == status) && (100000UL < ATCA_IFACECFG_VALUE(iface->mIfaceCFG, atcai2c.baud)))
+            if ((ATCA_SUCCESS == status) && (100000u < ATCA_IFACECFG_I2C_BAUD(iface->mIfaceCFG)))
             {
-                temp = ATCA_IFACECFG_VALUE(iface->mIfaceCFG, atcai2c.baud);
-                status = atcontrol(iface, ATCA_HAL_CHANGE_BAUD, &temp, sizeof(temp));
+                temp = ATCA_IFACECFG_I2C_BAUD(iface->mIfaceCFG);
+                status = atcontrol(iface, (uint8_t)ATCA_HAL_CHANGE_BAUD, &temp, sizeof(temp));
             }
 
             if (ATCA_SUCCESS == status)
             {
-                status = hal_check_wake((uint8_t*)&wake, rxlen);
+                status = hal_check_wake((uint8_t*)&wake, (int)rxlen);
             }
-        }
-        while (0 < retries-- && ATCA_SUCCESS != status);
+        } while (0 < retries-- && ATCA_SUCCESS != status);
     }
     return status;
 }
@@ -113,7 +113,7 @@ ATCA_STATUS calib_wakeup(ATCADevice device)
     ATCA_STATUS status = ATCA_BAD_PARAM;
     ATCAIface iface = atGetIFace(device);
 
-    if (iface && iface->mIfaceCFG)
+    if ((NULL != iface) && (NULL != iface->mIfaceCFG))
     {
 #ifdef ATCA_HAL_LEGACY_API
         status = atwake(iface);
@@ -142,7 +142,7 @@ ATCA_STATUS calib_wakeup(ATCADevice device)
  */
 ATCA_STATUS calib_idle(ATCADevice device)
 {
-    ATCA_STATUS status = ATCA_BAD_PARAM;
+    ATCA_STATUS status;
     ATCADeviceType device_type = atcab_get_device_type_ext(device);
 
 #ifdef ATCA_HAL_LEGACY_API
@@ -157,7 +157,7 @@ ATCA_STATUS calib_idle(ATCADevice device)
         if (!atcab_is_ca2_device(device_type))
         {
             uint8_t command = 0x02;
-            status = atsend(&device->mIface, atcab_get_device_address(device), &command, 1);
+            status = atsend(&device->mIface, command, NULL, 0);
         }
         else
         {
@@ -174,7 +174,7 @@ ATCA_STATUS calib_idle(ATCADevice device)
  */
 ATCA_STATUS calib_sleep(ATCADevice device)
 {
-    ATCA_STATUS status = ATCA_BAD_PARAM;
+    ATCA_STATUS status;
 
 #ifdef ATCA_HAL_LEGACY_API
     status = atsleep(&device->mIface);
@@ -186,7 +186,7 @@ ATCA_STATUS calib_sleep(ATCADevice device)
     else
     {
         uint8_t command = 0x01;
-        status = atsend(&device->mIface, atcab_get_device_address(device), &command, 1);
+        status = atsend(&device->mIface, command, NULL, 0);
     }
 #endif
     return status;
@@ -196,7 +196,7 @@ ATCA_STATUS calib_sleep(ATCADevice device)
  *  \param[in] device     Device context pointer
  *  \return ATCA_SUCCESS on success, otherwise an error code.
  */
-ATCA_STATUS _calib_exit(ATCADevice device)
+ATCA_STATUS calib_exit(ATCADevice device)
 {
     return calib_idle(device);
 }
@@ -214,7 +214,7 @@ ATCA_STATUS _calib_exit(ATCADevice device)
 ATCA_STATUS calib_get_addr(uint8_t zone, uint16_t slot, uint8_t block, uint8_t offset, uint16_t* addr)
 {
     ATCA_STATUS status = ATCA_SUCCESS;
-    uint8_t mem_zone = zone & 0x03;
+    uint8_t mem_zone = (uint8_t)(zone & 0x03u);
 
     if (addr == NULL)
     {
@@ -235,14 +235,13 @@ ATCA_STATUS calib_get_addr(uint8_t zone, uint16_t slot, uint8_t block, uint8_t o
             *addr = ((uint16_t)block) << 3;
             *addr |= offset;
         }
-        else     // ATCA_ZONE_DATA
+        else    // ATCA_ZONE_DATA
         {
             *addr = slot << 3;
-            *addr  |= offset;
+            *addr |= offset;
             *addr |= ((uint16_t)block) << 8;
         }
-    }
-    while (0);
+    } while (false);
 
     return status;
 }
@@ -270,8 +269,6 @@ ATCA_STATUS calib_ca2_get_addr(uint8_t zone, uint16_t slot, uint8_t block, uint8
         return ATCA_TRACE(ATCA_BAD_PARAM, "NULL pointer received");
     }
 
-    // Initialize the addr to 00
-    *addr = 0;
     *addr = slot << 3;
     *addr |= ((uint16_t)block) << 8;
 
@@ -329,15 +326,15 @@ ATCA_STATUS calib_get_zone_size(ATCADevice device, uint8_t zone, uint16_t slot, 
         {
         case ATCA_ZONE_CONFIG: *size = 64; break;
         case ATCA_ZONE_DATA:
-            if ((0 == slot) || (3 == slot))
+            if ((0u == slot) || (3u == slot))
             {
                 *size = 32;
             }
-            else if (1 == slot)
+            else if (1u == slot)
             {
                 *size = 320;
             }
-            else if (2 == slot)
+            else if (2u == slot)
             {
                 *size = 64;
             }
@@ -357,15 +354,15 @@ ATCA_STATUS calib_get_zone_size(ATCADevice device, uint8_t zone, uint16_t slot, 
         case ATCA_ZONE_CONFIG: *size = 128; break;
         case ATCA_ZONE_OTP:    *size = 64; break;
         case ATCA_ZONE_DATA:
-            if (slot < 8)
+            if (slot < 8u)
             {
                 *size = 36;
             }
-            else if (slot == 8)
+            else if (slot == 8u)
             {
                 *size = 416;
             }
-            else if (slot < 16)
+            else if (slot < 16u)
             {
                 *size = 72;
             }

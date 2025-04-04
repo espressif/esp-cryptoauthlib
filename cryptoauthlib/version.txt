@@ -1,1 +1,1 @@
-cryptoauthlib-v3.5.1
+cryptoauthlib-v3.7.7

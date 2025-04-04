@@ -31,19 +31,22 @@
 #include "atcacert/atcacert_client.h"
 
 #if WPC_MSG_PR_EN
+
+#define CA2_TRANSPORT_KEY       0x8000
+
 /** \brief WPC API - Builds the CHALLENGE message
  *
  *  \return ATCA_SUCCESS on success, otherwise an error code.
  */
 ATCA_STATUS wpc_msg_challenge(
-    ATCADevice device,          /**< [in] Device Context */
+    ATCADevice      device,     /**< [in] Device Context */
     uint8_t *const  message,    /**< [out] Message Buffer */
     uint16_t *const msg_len,    /**< [in/out] In: message buffer size, Out: message length */
     const uint8_t   slot        /**< [in] Slot number */
     )
 {
-    ATCA_STATUS status;
-    uint8_t nonce[32];
+    ATCA_STATUS status = ATCA_BAD_PARAM;
+    uint8_t nonce[32] = { 0U };
 
     ATCA_CHECK_INVALID_MSG((!message || !msg_len), ATCA_BAD_PARAM, "NULL pointer received");
 
@@ -58,9 +61,21 @@ ATCA_STATUS wpc_msg_challenge(
     else
 #endif
     {
-        status = ATCA_TRACE(atcab_random_ext(device, nonce), "atcab_random failed");
+        if (true == atcab_is_ca2_device(atcab_get_device_type_ext(device)))
+        {
+#if ATCA_CA2_SUPPORT
+            uint8_t num_in[20] = { 0u };
+            status = ATCA_TRACE(calib_nonce_gen_session_key(device, CA2_TRANSPORT_KEY, num_in, nonce), "atcab_nonce_rand failed");
+#endif
+        }
+        else
+        {
+#if (ATCA_ECC_SUPPORT || ATCA_TA_SUPPORT)
+            status = ATCA_TRACE(atcab_random_ext(device, nonce), "atcab_random failed");
+#endif
+        }
     }
-    
+
     if (ATCA_SUCCESS == status)
     {
         memcpy(&message[2], nonce, WPC_CHALLENGE_NONCE_LENGTH);
@@ -147,7 +162,7 @@ ATCA_STATUS wpc_msg_error(
  *  \return ATCA_SUCCESS on success, otherwise an error code.
  */
 ATCA_STATUS wpc_msg_challenge_auth(
-    ATCADevice device,          /**< [in] Device Context */
+    ATCADevice      device,     /**< [in] Device Context */
     uint8_t  *const response,   /**< [out] Response Message */
     uint16_t *const resp_len,   /**< [in/out] In: response buffer size, Out: response length */
     const uint8_t * request     /**< [in] Request Message */
@@ -166,13 +181,19 @@ ATCA_STATUS wpc_msg_challenge_auth(
     response[0] = WPC_CHALLENGE_AUTH_HEADER;
     response[1] = (WPC_PROTOCOL_MAX_VERSION << 4) | wpccert_get_slots_populated();
 
-    if (ATCA_SUCCESS != (status = wpccert_get_slot_info(&handle, &cert_def, slot)))
+    if (ATCA_SUCCESS != (status = wpccert_get_slot_info(&handle, &cert_def, NULL, NULL, NULL, slot)))
     {
         return wpc_msg_error(response, resp_len, WPC_ERROR_INVALID_REQUEST, 0);
     }
 
+    if (NULL == cert_def)
+    {
+        status = ATCA_TRACE(ATCA_BAD_PARAM, "NULL pointer received for cert def");
+        return status;
+    }
+
     if (ATCA_SUCCESS != (status = atcab_read_bytes_zone_ext(device, ATCA_ZONE_DATA, handle, 0,
-                                                        chain_digest, sizeof(chain_digest))))
+                                                            chain_digest, sizeof(chain_digest))))
     {
         ATCA_TRACE(status, "atcab_read_bytes_zone execution is failed");
         return wpc_msg_error(response, resp_len, WPC_ERROR_UNSPECIFIED, 0);
@@ -195,7 +216,7 @@ ATCA_STATUS wpc_msg_challenge_auth(
 }
 
 ATCA_STATUS wpc_msg_digests(
-    ATCADevice device,          /**< [in] Device Context */
+    ATCADevice      device,     /**< [in] Device Context */
     uint8_t  *const response,   /**< [out] Response Message */
     uint16_t *const resp_len,   /**< [in/out] In: response buffer size, Out: response length */
     const uint8_t * request     /**< [in] Request Message */
@@ -217,10 +238,10 @@ ATCA_STATUS wpc_msg_digests(
         uint8_t slot_mask = (1 << slot);
         if (request[1] & slot_mask)
         {
-            if (ATCA_SUCCESS == wpccert_get_slot_info(&handle, NULL, slot))
+            if (ATCA_SUCCESS == wpccert_get_slot_info(&handle, NULL, NULL, NULL, NULL, slot))
             {
                 if (ATCA_SUCCESS != (status = atcab_read_bytes_zone_ext(device, ATCA_ZONE_DATA, handle, 0,
-                                                                    digest, ATCA_SHA256_DIGEST_SIZE)))
+                                                                        digest, ATCA_SHA256_DIGEST_SIZE)))
                 {
                     ATCA_TRACE(status, "atcab_read_bytes_zone execution failed");
                     return wpc_msg_error(response, resp_len, WPC_ERROR_UNSPECIFIED, 0);
@@ -251,14 +272,14 @@ ATCA_STATUS wpc_msg_digests(
  *  \return ATCA_SUCCESS on success, otherwise an error code.
  */
 ATCA_STATUS wpc_msg_certificate(
-    ATCADevice device,          /**< [in] Device Context */
+    ATCADevice      device,     /**< [in] Device Context */
     uint8_t *const  response,   /**< [out] WPC authentication challenge response from device */
     uint16_t *const resp_len,   /**< [in] response buffer size
                                    [out] data size on response */
     const uint8_t * request,    /**< [in] WPC authentication challenge request from host */
     uint8_t *       buffer,     /**< [in] Temporary buffer - large enough to hold a certificate */
     const uint16_t  buflen      /**< [in] Length of the temporary buffer */
-)
+    )
 {
     ATCA_STATUS status;
     size_t n_mc = 0;
@@ -267,13 +288,35 @@ ATCA_STATUS wpc_msg_certificate(
     uint16_t length;
     uint8_t * data;
     const atcacert_def_t * cert_def;
+    uint8_t* mfg_cert = NULL;
+    uint8_t root_digest[32] = { 0 };
+    uint16_t root_digest_handle = 0;
 
     ATCA_CHECK_INVALID_MSG((!buffer || !request || !response || !resp_len),
                            ATCA_BAD_PARAM, "NULL pointer received");
 
-    if (ATCA_SUCCESS != (status = wpccert_get_slot_info(NULL, &cert_def, request[1] & 0x03)))
+#if (ATCA_TA_SUPPORT)
+    if (ATCA_SUCCESS != (status = wpccert_get_slot_info(NULL, &cert_def, NULL, NULL, &root_digest_handle, request[1] & 0x03)))
+#else
+    if (ATCA_SUCCESS != (status = wpccert_get_slot_info(NULL, &cert_def, &mfg_cert, root_digest, NULL, request[1] & 0x03)))
+#endif
     {
         return wpc_msg_error(response, resp_len, WPC_ERROR_INVALID_REQUEST, 0);
+    }
+
+#if ATCA_TA_SUPPORT
+    if (ATCA_SUCCESS != (status = atcab_read_bytes_zone_ext(device, ATCA_ZONE_DATA, root_digest_handle, 0,
+                                                            root_digest, ATCA_SHA256_DIGEST_SIZE)))
+    {
+        ATCA_TRACE(status, "atcab_read_bytes_zone execution failed");
+        return wpc_msg_error(response, resp_len, WPC_ERROR_UNSPECIFIED, 0);
+    }
+#endif
+
+    if (NULL == cert_def)
+    {
+        status = ATCA_TRACE(ATCA_BAD_PARAM, "NULL pointer received for Product cert def");
+        return status;
     }
 
     offset = (((uint16_t)(request[1] & 0xE0)) << 8) | request[2];
@@ -284,20 +327,27 @@ ATCA_STATUS wpc_msg_certificate(
     if ((offset < 2) || ((offset < WPC_CONST_OS_MC) && ((length == 0) || (length + offset > WPC_CONST_OS_MC)))
         || ((offset > WPC_CONST_OS_MC) && (0x600 > offset)))
     {
-        /* Get the manufacturer certificate length */
-        if (ATCA_SUCCESS != (status = atcacert_read_cert_size(cert_def->ca_cert_def, &n_mc)))
+        if ((NULL != mfg_cert) && (NULL == cert_def->ca_cert_def))
         {
-            status = ATCA_TRACE(status, "atcacert_read_cert_size execution is failed for mfg cert");
-            return status;
+            n_mc = (size_t)((mfg_cert[2] << 8) | mfg_cert[3]) + 4u;
+        }
+        else
+        {
+            /* Get the manufacturer certificate length */
+            if (ATCA_SUCCESS != (status = wpccert_read_cert_size(device, cert_def->ca_cert_def, &n_mc)))
+            {
+                status = ATCA_TRACE(status, "atcacert_read_cert_size execution is failed for mfg cert");
+                return status;
+            }
         }
     }
 
     /* Get the product certificate length if the read will include it or the total chain length */
     if ((length == 0) || (offset < 2) || ((WPC_CONST_OS_MC < offset) && ((0x600 <= offset) || (n_mc < offset + length))))
     {
-        if (ATCA_SUCCESS != (status = atcacert_read_cert_size(cert_def, &n_puc)))
+        if (ATCA_SUCCESS != wpccert_read_cert_size(device, cert_def, &n_puc))
         {
-            status = ATCA_TRACE(status, "atcacert_read_cert_size execution is failed for pdu cert");
+            status = ATCA_TRACE(status, "wpccert_read_cert_size execution is failed for pdu cert");
             return status;
         }
     }
@@ -335,31 +385,45 @@ ATCA_STATUS wpc_msg_certificate(
             {
                 *data++ = ((chain_length >> 8) & 0xFF);
                 length--;
+                offset += 1u;
             }
             *data++ = (chain_length & 0xFF);
             length--;
+            offset += 1u;
         }
 
         /* Copy in the root hash if the read includes it */
         if (offset < WPC_CONST_OS_MC)
         {
             uint16_t rh_length = length < WPC_CONST_N_RH ? length : WPC_CONST_N_RH;
-            memcpy(data, g_root_ca_digest, rh_length);
+
+            memcpy(data, root_digest, rh_length);
             data += rh_length;
             length -= rh_length;
+            offset += rh_length;
         }
 
         /* Read the manufacturer certificate */
-        if ((offset > WPC_CONST_OS_MC) && (offset < (WPC_CONST_OS_MC + n_mc)))
+        if ((offset >= WPC_CONST_OS_MC) && (offset < (WPC_CONST_OS_MC + n_mc)))
         {
             uint16_t mc_length = length < n_mc ? length : n_mc;
-            if (ATCA_SUCCESS != (status = wpccert_read_cert(device, cert_def->ca_cert_def, buffer, &n_mc)))
+
+            if ((NULL != mfg_cert) && (NULL == cert_def->ca_cert_def))
             {
-                return ATCA_TRACE(status, "wpccert_read_cert execution is failed for mfg cert");
+                memcpy(buffer, mfg_cert, mc_length);
             }
+            else
+            {
+                if (ATCA_SUCCESS != (status = wpccert_read_cert(device, cert_def->ca_cert_def, buffer, &n_mc)))
+                {
+                    return ATCA_TRACE(status, "wpccert_read_cert execution is failed for mfg cert");
+                }
+            }
+
             memcpy(data, &buffer[offset - WPC_CONST_OS_MC], mc_length);
             data += mc_length;
             length -= mc_length;
+            offset += mc_length;
         }
     }
     else
@@ -409,12 +473,12 @@ ATCA_STATUS wpc_msg_certificate(
  *  \return ATCA_SUCCESS on success, otherwise an error code.
  */
 ATCA_STATUS wpc_auth_signature(
-    ATCADevice device,          /**< [in] Device Context */
-    const uint8_t *chain_digest,        /**< [in] WPC Authentication Cert Chain digest*/
-    const uint16_t private_key_slot,    /**< [in] WPC Authentication private key slot*/
-    const uint8_t *request,             /**< [in] WPC authentication challenge request from host */
-    const uint8_t *other_data,          /**< [in] Challegen response b0, b1 and Digest LSB*/
-    uint8_t *const signature            /**< [out] Signature for WPC authentication TBS */
+    ATCADevice      device,             /**< [in] Device Context */
+    const uint8_t * chain_digest,       /**< [in] WPC Authentication Cert Chain digest*/
+    const uint16_t  private_key_slot,   /**< [in] WPC Authentication private key slot*/
+    const uint8_t * request,            /**< [in] WPC authentication challenge request from host */
+    const uint8_t * other_data,         /**< [in] Challegen response b0, b1 and Digest LSB*/
+    uint8_t *const  signature           /**< [out] Signature for WPC authentication TBS */
     )
 {
     ATCA_STATUS status;

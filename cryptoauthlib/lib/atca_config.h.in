@@ -18,11 +18,13 @@
 #cmakedefine ATCA_ATECC108A_SUPPORT
 #cmakedefine ATCA_ATECC508A_SUPPORT
 #cmakedefine ATCA_ATECC608_SUPPORT
-#cmakedefine ATCA_TA100_SUPPORT
 #cmakedefine ATCA_ECC204_SUPPORT
 #cmakedefine ATCA_TA010_SUPPORT
 #cmakedefine ATCA_SHA104_SUPPORT
 #cmakedefine ATCA_SHA105_SUPPORT
+
+/* Linked device support library */
+#cmakedefine01 ATCA_TA_SUPPORT
 
 /** Device Override - Library Assumes ATECC608B support in checks */
 #cmakedefine ATCA_ATECC608A_SUPPORT
@@ -55,6 +57,12 @@ selected plus however additional slots one would like */
 /** Enable debug messages */
 #cmakedefine ATCA_PRINTF
 
+/** Enable preprocessor warning messages */
+#cmakedefine01 ATCA_PREPROCESSOR_WARNING
+
+/** Enable jwt functionality */
+#cmakedefine ATCA_JWT_EN
+
 /** Enable to build in test hooks */
 #cmakedefine ATCA_TESTS_ENABLED
 
@@ -65,6 +73,13 @@ selected plus however additional slots one would like */
 #cmakedefine ATCA_TNGLORA_SUPPORT
 #cmakedefine ATCA_TFLEX_SUPPORT
 #cmakedefine ATCA_TNG_LEGACY_SUPPORT
+
+/** Define WPC to be supported. */
+#cmakedefine ATCA_WPC_SUPPORT
+
+/** Define SHA options to be supported. */
+#cmakedefine01 ATCAC_SHA384_EN
+#cmakedefine01 ATCAC_SHA512_EN
 
 /** Define Software Crypto Library to Use - if none are defined use the
     cryptoauthlib version where applicable */
@@ -91,18 +106,25 @@ selected plus however additional slots one would like */
 /** Enable Strict ISO/C99 compliance */
 #cmakedefine ATCA_STRICT_C99
 
+/** Atcacert module configurations */
+#cmakedefine01 ATCACERT_COMPCERT_EN
+#cmakedefine01 ATCACERT_FULLSTOREDCERT_EN 
+
+/** Enable ATCACERT Full Certificate Integration */
+#cmakedefine01 ATCACERT_INTEGRATION_EN
+
 /******************** Device Configuration Section *************************/
-
-/** TA100 Specific - Enable auth sessions that require AES (CMAC/GCM) from
-   an external library */
-#cmakedefine ATCA_TA100_AES_AUTH_SUPPORT
-
-/** TA100 Specific - Enable support for the FCE APIs for the TA100 */
-#cmakedefine ATCA_TA100_FCE_SUPPORT
 
 /** Enable the delete command */
 #cmakedefine01 CALIB_DELETE_EN
 
+/******************** Packet Size Configuration Section *************************/
+
+/** Provide Maximum packet size for the command to be sent and received */
+#cmakedefine MAX_PACKET_SIZE      (@MAX_PACKET_SIZE@U)
+
+/** Enables multipart buffer handling (generally for small memory model platforms) */
+#cmakedefine01 MULTIPART_BUF_EN
 
 /******************** Platform Configuration Section ***********************/
 
