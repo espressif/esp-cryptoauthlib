@@ -1,4 +1,5 @@
 #pragma once
+#include "sdkconfig.h"
 /* Cryptoauthlib Configuration File */
 #ifndef ATCA_CONFIG_H
 #define ATCA_CONFIG_H
@@ -22,7 +23,9 @@ This requires the `esp_idf_version.h' to be defined.
 /* Include HALS */
 #define ATCA_HAL_I2C
 #define ATCA_USE_RTOS_TIMER 1
+#if CONFIG_ATCA_MBEDTLS_ECDSA
 #define ATCA_MBEDTLS
+#endif
 //#define ATCA_CA_SUPPORT
 /* Included device support */
 #define ATCA_ATECC608_SUPPORT

@@ -27,6 +27,13 @@
 
 /* mbedTLS boilerplate includes */
 
+/* Cryptoauthlib Includes */
+#include "cryptoauthlib.h"
+#include "atca_basic.h"
+#include <string.h>
+
+#ifdef ATCA_MBEDTLS
+
 #include "mbedtls/version.h"
 
 #if (MBEDTLS_VERSION_NUMBER >= 0x03000000)
@@ -42,14 +49,8 @@
 
 #if defined(MBEDTLS_ECDSA_C)
 
-/* Cryptoauthlib Includes */
-#include "cryptoauthlib.h"
-#include "atca_basic.h"
-#include <string.h>
-
 #include "mbedtls/atca_mbedtls_wrap.h"
 #include "mbedtls/ecdsa.h"
-
 
 int atca_mbedtls_ecdsa_sign(const mbedtls_mpi* data, mbedtls_mpi* r, mbedtls_mpi* s,
                             const unsigned char* msg, size_t msg_len)
@@ -185,3 +186,4 @@ int mbedtls_ecdsa_verify(mbedtls_ecp_group *grp,
 #endif /* !MBEDTLS_ECDSA_VERIFY_ALT */
 
 #endif /* MBEDTLS_ECDSA_C */
+#endif /* ATCA_MBEDTLS */
