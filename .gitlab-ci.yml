@@ -41,7 +41,7 @@ build:firmware-all-targets:
           --output esp_cryptoauth_utility/firmware/build_${target}/ecu_firmware.bin || exit 1
 
         echo "Writing info.txt for $target"
-        git_commit_sha=$(git rev-parse HEAD)
+        git_commit_sha=$(git -C $IDF_PATH rev-parse HEAD)
         bin_sha1=$(sha1sum esp_cryptoauth_utility/firmware/build_${target}/ecu_firmware.bin | awk '{ print $1 }')
         {
           echo "ESP-IDF Version: ${IDF_VER}"
