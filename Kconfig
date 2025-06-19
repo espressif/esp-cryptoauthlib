@@ -15,6 +15,16 @@ menu "esp-cryptoauthlib"
             bool "ATECC608A chip type TrustCustom"
     endchoice
 
+    config ATCA_I2C_USE_LEGACY_DRIVER
+        bool "Force use of legacy I2C driver"
+        default n
+        help
+            Enable this option if you're using an I2C device that requires the legacy I2C driver and encounter conflicts related to I2C driver usage.
+            This will force the use of the legacy driver for ATECC608A communication.
+
+            For ESP-IDF versions < 5.2: Only the legacy I2C driver is available, so this option has no effect.
+            For ESP-IDF versions >= 5.2: New I2C driver is in use by default. Enable this option to switch back to the legacy driver if needed.
+
     config ATCA_MBEDTLS_ECDSA
         bool "Enable Hardware ECDSA keys for mbedTLS"
         depends on MBEDTLS_ECDSA_C
