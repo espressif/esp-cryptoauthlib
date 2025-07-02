@@ -121,16 +121,17 @@ def get_load_ram_esptool_args(stub_path):
 def load_app_stub(port, baudrate, stub_path):
     if stub_path is None:
         raise ValueError('Stub path cannot be None')
-    esp = esptool.cmds.detect_chip(port=port, baud=baudrate)
-    print('Chip detected')
-    esp.flash_spi_attach(0)
+    # Use ESPLoader as a context manager to ensure proper cleanup
+    with esptool.cmds.detect_chip(port=port, baud=baudrate) as esp:
+        print('Chip detected')
+        esp.flash_spi_attach(0)
 
-    esptool_args = get_load_ram_esptool_args(stub_path)
-    start_time = time.time()
-    esptool.cmds.load_ram(esp, esptool_args)
-    end_time = time.time()
-    print('Time required to load the app into the RAM'
-          ' = {}s'.format(end_time - start_time))
+        esptool_args = get_load_ram_esptool_args(stub_path)
+        start_time = time.time()
+        esptool.cmds.load_ram(esp, esptool_args)
+        end_time = time.time()
+        print('Time required to load the app into the RAM'
+              ' = {}s'.format(end_time - start_time))
 
 
 def esp_cmd_check_ok(retval, cmd_str):
