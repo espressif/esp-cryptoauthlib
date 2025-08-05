@@ -45,7 +45,7 @@ build:esp32-all-versions:
     - build
   parallel:
     matrix:
-      - IDF_VER: ["release-v4.3", "release-v4.4", "release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4", "latest"]
+      - IDF_VER: ["release-v4.3", "release-v4.4", "release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4", "release-v5.5", "latest"]
   image: espressif/idf:${IDF_VER}
   <<: *setup_idf
   script:

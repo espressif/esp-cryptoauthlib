@@ -167,12 +167,14 @@ exit:
     return ret;
 }
 
-void app_main(void)
+static void ecdsa_example_task(void *pvParameter)
 {
     int ret = 0;
     bool lock;
     uint8_t buf[ATCA_ECC_CONFIG_SIZE];
     uint8_t pubkey[ATCA_PUB_KEY_SIZE];
+
+    ESP_LOGI(TAG, "Starting ECDSA example task");
 
     /* Initialize the mbedtls library */
     ret = configure_mbedtls_rng();
@@ -232,8 +234,18 @@ void app_main(void)
         goto exit;
     }
 
+    ESP_LOGI(TAG, "ECDSA example task completed successfully");
+
 exit:
     fflush(stdout);
     close_mbedtls_rng();
+    vTaskDelete(NULL);
+}
 
+void app_main(void)
+{
+    ESP_LOGI(TAG, "ECDSA example app_main start");
+
+    /* Create the ECDSA example task */
+    xTaskCreate(&ecdsa_example_task, "ecdsa_example_task", 8192, NULL, 5, NULL);
 }
