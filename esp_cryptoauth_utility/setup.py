@@ -81,4 +81,5 @@ setup(
     include_package_data = True,
     packages=find_packages(),
     scripts=['secure_cert_mfg.py'],
+    license_files = [],
 )
