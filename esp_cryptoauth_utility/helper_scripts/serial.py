@@ -57,18 +57,11 @@ class cmd_interpreter:
         expected_version_pattern = re.compile(rb'v\d+\.\d+\.\d+')  # Regex for vX.Y.Z
         # The firmware sends this prompt when it's ready to receive the version command
         firmware_prompt_pattern = re.compile(rb'Initializing Command line: >>')
-        version_resend_interval = 0.1  # Resend every 100ms
 
         # Initialization
         start_time = time.time()
-        last_version_send_time = start_time
         prompt_seen = False  # Track if we've seen the firmware's prompt
-
-        # Start sending "version" immediately and periodically
-        # The firmware will accept it as soon as it starts listening on this interface
-        self.port.write(b'version')
-        self.port.flush()
-        print('Sending version command')
+        version_sent = False  # Send "version" only once (firmware reads exactly 7 bytes; extra bytes get echoed later)
 
         while True:
             try:
@@ -78,15 +71,15 @@ class cmd_interpreter:
 
                 current_time = time.time()
 
-                # Resend version command periodically until we get a response
-                if (current_time - last_version_send_time) >= version_resend_interval:
-                    self.port.write(b'version')
-                    self.port.flush()
-                    last_version_send_time = current_time
-
-                # Check if we've seen the firmware prompt (means firmware is ready)
+                # Check if we've seen the firmware prompt (means firmware is ready for "version")
                 if firmware_prompt_pattern.search(line):
                     prompt_seen = True
+
+                if prompt_seen and not version_sent:
+                    self.port.write(b'version')
+                    self.port.flush()
+                    version_sent = True
+                    print('Sending version command')
 
                 # Check for expected version response - but ONLY if we've seen the prompt
                 # This prevents matching on boot log output like "App version: v1.0.1"
