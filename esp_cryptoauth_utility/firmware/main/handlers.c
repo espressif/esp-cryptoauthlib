@@ -26,6 +26,10 @@
 #include "esp_log.h"
 #include "esp_err.h"
 #include "esp_rom_crc.h"
+#include "esp_rom_sys.h"
+#include "esp_rom_gpio.h"
+#include "hal/gpio_ll.h"
+#include "soc/gpio_sig_map.h"
 #include "esp_partition.h"
 #include "esp_flash_partitions.h"
 #include "spi_flash_mmap.h"
@@ -155,25 +159,54 @@ static esp_err_t ensure_i2c_bus_initialized(uint8_t sda_pin, uint8_t scl_pin)
     return ESP_OK;
 }
 
-// Helper function to probe I2C address and initialize if device is found
-static esp_err_t probe_and_init_device(uint8_t address, char *device_type, const char *device_name, uint8_t sda_pin, uint8_t scl_pin)
-{
-    esp_err_t esp_ret;
-    int ret;
+#endif
 
-    // Ensure I2C bus is initialized
-    esp_ret = ensure_i2c_bus_initialized(sda_pin, scl_pin);
+esp_err_t init_atecc608_device(char *device_type, uint8_t i2c_sda_pin, uint8_t i2c_scl_pin)
+{
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 2, 0) && !defined(CONFIG_ATCA_I2C_USE_LEGACY_DRIVER)
+    // Two-phase detection:
+    // Phase 1: Wake the ATECC chip by driving SDA low via GPIO. The chip
+    //          ignores I2C probes while in sleep mode but wakes when SDA is
+    //          held low for at least tWLO (60us).
+    // Phase 2: Now that the chip is awake, use i2c_master_probe to quickly
+    //          find the correct address, then atcab_init at that address.
+    int ret;
+    static const uint8_t addresses[] = {0x6A, 0x6C, 0xC0, 0x70};
+    static const char *names[] = {"Trust&Go", "TrustFlex", "TrustCustom", "TrustManager"};
+
+    // Phase 1: Wake the ATECC chip by toggling SDA low via GPIO.
+    // Must be done BEFORE I2C bus init so we can control the pin directly.
+    // Uses ROM + LL (inline) functions to avoid pulling in the GPIO driver.
+    esp_rom_gpio_pad_select_gpio(i2c_sda_pin);
+    esp_rom_gpio_connect_out_signal(i2c_sda_pin, SIG_GPIO_OUT_IDX, false, false);
+    gpio_ll_od_enable(&GPIO, i2c_sda_pin);
+    gpio_ll_output_enable(&GPIO, i2c_sda_pin);
+    gpio_ll_set_level(&GPIO, i2c_sda_pin, 0);
+    esp_rom_delay_us(100);   // tWLO: hold SDA low for 100us (min 60us)
+    gpio_ll_set_level(&GPIO, i2c_sda_pin, 1);
+    esp_rom_delay_us(1500);  // tWHI: wait 1.5ms for chip to wake
+    gpio_ll_output_disable(&GPIO, i2c_sda_pin);
+    gpio_ll_od_disable(&GPIO, i2c_sda_pin);
+
+    // Phase 2: Chip is awake, init I2C bus and probe each known address.
+    esp_err_t esp_ret = ensure_i2c_bus_initialized(i2c_sda_pin, i2c_scl_pin);
     if (esp_ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize I2C bus for probing address 0x%02X", address);
+        ESP_LOGE(TAG, "Failed to initialize I2C bus for probing");
         return ESP_FAIL;
     }
 
-    // Probe the I2C address (address is 8-bit, need to convert to 7-bit for probe)
-    uint16_t probe_address = address >> 1;  // Convert 8-bit to 7-bit address
-    esp_ret = i2c_master_probe(s_i2c_bus_handle, probe_address, 50);  // 50ms timeout
+    uint8_t found_address = 0;
+    const char *found_name = NULL;
+    for (int i = 0; i < 4; i++) {
+        uint16_t probe_address = addresses[i] >> 1;
+        if (i2c_master_probe(s_i2c_bus_handle, probe_address, 50) == ESP_OK) {
+            found_address = addresses[i];
+            found_name = names[i];
+            break;
+        }
+    }
 
-    // Clean up probe bus handle after probing - we'll create a new one for next probe if needed
-    // or let HAL manage it if probe succeeds
+    // Clean up probe bus before atcab_init (HAL creates its own)
     if (s_i2c_bus_handle != NULL) {
         i2c_del_master_bus(s_i2c_bus_handle);
         s_i2c_bus_handle = NULL;
@@ -181,47 +214,23 @@ static esp_err_t probe_and_init_device(uint8_t address, char *device_type, const
         s_initialized_scl_pin = 0;
     }
 
-    if (esp_ret == ESP_OK) {
-        // Device found at this address, now initialize it properly
-        // The HAL will create its own bus handle during atcab_init
-        cfg_ateccx08a_i2c_default.atcai2c.address = address;
-        ret = atcab_init(&cfg_ateccx08a_i2c_default);
-        if (ret == ATCA_SUCCESS) {
-            ESP_LOGI(TAG, "Device is of type %s", device_name);
-            sprintf(device_type, "%s", device_name);
-            return ESP_OK;
-        }
-        // If init fails after successful probe, release and continue
-        ESP_LOGE(TAG, "Probe succeeded for address 0x%02X but atcab_init failed", address);
-        atcab_release();
+    if (found_name == NULL) {
+        ESP_LOGE(TAG, "No ATECC device found at any known address");
+        return ESP_FAIL;
     }
 
-    return ESP_FAIL;
-}
-#endif
-
-esp_err_t init_atecc608_device(char *device_type, uint8_t i2c_sda_pin, uint8_t i2c_scl_pin)
-{
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 2, 0) && !defined(CONFIG_ATCA_I2C_USE_LEGACY_DRIVER)
-    // Use i2c_master_probe to check each address before initializing
-
-    if (probe_and_init_device(0xC0, device_type, "TrustCustom", i2c_sda_pin, i2c_scl_pin) == ESP_OK) {
+    // Initialize at the detected address
+    cfg_ateccx08a_i2c_default.atcai2c.address = found_address;
+    ret = atcab_init(&cfg_ateccx08a_i2c_default);
+    if (ret == ATCA_SUCCESS) {
+        ESP_LOGI(TAG, "Device is of type %s", found_name);
+        sprintf(device_type, "%s", found_name);
         return ESP_OK;
     }
-
-    if (probe_and_init_device(0x6A, device_type, "Trust&Go", i2c_sda_pin, i2c_scl_pin) == ESP_OK) {
-        return ESP_OK;
-    }
-
-    if (probe_and_init_device(0x6C, device_type, "TrustFlex", i2c_sda_pin, i2c_scl_pin) == ESP_OK) {
-        return ESP_OK;
-    }
-
-    if (probe_and_init_device(0x70, device_type, "TrustManager", i2c_sda_pin, i2c_scl_pin) == ESP_OK) {
-        return ESP_OK;
-    }
+    atcab_release();
 #else
     // Fallback to original method for legacy driver or older ESP-IDF versions
+    int ret;
     cfg_ateccx08a_i2c_default.atcai2c.address = 0xC0;
     ret = atcab_init(&cfg_ateccx08a_i2c_default);
     if (ret == ATCA_SUCCESS) {

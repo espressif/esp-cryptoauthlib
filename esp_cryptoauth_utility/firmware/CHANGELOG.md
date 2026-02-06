@@ -1,3 +1,7 @@
+## [v1.1.1] - 2026-02-06
+### Fixed
+- Use GPIO wake instead of dummy-write wake for ATECC608 device detection.
+
 ## [v1.1.0] - 2025-04-10
 ### Added
 - Added CRC integrity check for certificate received from host through console.
