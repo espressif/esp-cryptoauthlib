@@ -1,9 +1,3 @@
-Build Environment:
-    IDF: v5.4
-    Git commit: 46909c504864d83a2bb518ac948b5e4c658928e1
-
-Sample Binary Information:
-    File: secure_cert_mfg_esp32c2.bin
-    sha1: fee6091bb64002184d705af063c54ce452812f7d
-    Purpose: Secure certificate manufacturing binary for ESP32C2
-    Compatible with: ATECC608 crypto authentication device
+ESP-IDF Version: release-v6.1
+Git Commit: 0d9287800812c95662921c2c5e812023939e3d58
+ecu_firmware.bin SHA1: a4445b2cb462195eec06afa98ac184dd73b9c8d6
