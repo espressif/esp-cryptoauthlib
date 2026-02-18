@@ -2,8 +2,8 @@
 
 ## Supported Targets
 
-| Supported Target Board | ESP32 | ESP32-C2 | ESP32-C3 | ESP32-C6 | ESP32-H2 | ESP32-P4 | ESP32-S3 |
-| ---------------------- | ----- | -------- | -------- | -------- | -------- | -------- | -------- |
+| Supported Target Board | ESP32 | ESP32-C2 | ESP32-C3 | ESP32-C5 | ESP32-C6 | ESP32-C61 | ESP32-H2 | ESP32-P4 | ESP32-S3 |
+| ---------------------- | ----- | -------- | -------- | -------- | -------- | --------- | -------- | -------- | -------- |
 
 ## Description
  The python utility helps to configure and provision [ATECC608A](https://www.microchip.com/en-us/product/atecc608a)/[ATECC608B](https://www.microchip.com/en-us/product/atecc608b) chip connected to a Supported Target Board.

@@ -1,3 +1,10 @@
+## [v1.2.0] - 2026-02-18
+### Added
+- Added support for ESP32-C5 and ESP32-C61 targets.
+
+### Changed
+- Updated default sdkconfig files.
+
 ## [v1.1.1] - 2026-02-06
 ### Fixed
 - Use GPIO wake instead of dummy-write wake for ATECC608 device detection.

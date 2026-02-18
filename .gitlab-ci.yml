@@ -133,7 +133,7 @@ build:ecu-firmware-all-targets-latest-release:
     - unset EXTRA_CXXFLAGS
     - echo "Building esp_cryptoauth_utility/firmware with ESP-IDF ${IDF_VER}"
     - |
-      for target in esp32 esp32s3 esp32c2 esp32c3 esp32c5 esp32c6 esp32h2 esp32p4; do
+      for target in esp32 esp32s3 esp32c2 esp32c3 esp32c5 esp32c6 esp32c61 esp32h2 esp32p4; do
         echo "Building for $target"
         idf-build-apps build --target $target --paths esp_cryptoauth_utility/firmware --build-dir build_${target} || exit 1
 
