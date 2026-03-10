@@ -32,8 +32,13 @@ determine_latest_release:
         pip install idf-component-manager==1.2.3 'idf-build-apps==1.1.5'
       elif [[ "${IDF_VER}" == "release-v4.4" ]]; then
         pip install idf-component-manager==1.2.3 'idf-build-apps==1.1.5'
+      elif [[ "${IDF_VER}" == release-v6* || "${IDF_VER}" == "latest" || -z "${IDF_VER}" ]]; then
+        # ESP-IDF 6.x sets __COMPONENT_MANAGER_INTERFACE_VERSION=5, which requires idf-component-manager>=3.0.
+        # Jobs without IDF_VER use the `latest` or dynamically-resolved release image, which is 6.x today.
+        pip install --upgrade 'idf-component-manager>=3.0' 'idf-build-apps>=2.4,<4'
       else
-        pip install --upgrade idf-component-manager 'idf-build-apps>=2.4,<2.5'
+        # ESP-IDF 5.x pins idf-component-manager~=2.2 in requirements.core.txt, so 3.x is rejected at runtime.
+        pip install --upgrade 'idf-component-manager<3.0' 'idf-build-apps>=2.4,<2.5'
       fi
     - export EXTRA_CFLAGS="${PEDANTIC_FLAGS} -Wstrict-prototypes"
     - export EXTRA_CXXFLAGS="${PEDANTIC_FLAGS}"
@@ -45,7 +50,7 @@ build:esp32-all-versions:
     - build
   parallel:
     matrix:
-      - IDF_VER: ["release-v4.3", "release-v4.4", "release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4", "release-v5.5", "latest"]
+      - IDF_VER: ["release-v4.3", "release-v4.4", "release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4", "release-v5.5", "release-v6.0", "latest"]
   image: espressif/idf:${IDF_VER}
   <<: *setup_idf
   script:
@@ -120,7 +125,7 @@ build:ecu-firmware-all-targets-latest-release:
     - build
   parallel:
     matrix:
-      - IDF_VER: ["release-v5.5"]
+      - IDF_VER: ["release-v5.5", "release-v6.0", "release-v6.1"]
   image: espressif/idf:${IDF_VER}
   <<: *setup_idf
   script:
